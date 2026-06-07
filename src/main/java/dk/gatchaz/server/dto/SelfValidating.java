@@ -1,4 +1,4 @@
-package your.newproject.rename.dto;
+package dk.gatchaz.server.dto;
 
 import jakarta.validation.*;
 

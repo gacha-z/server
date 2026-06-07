@@ -1,7 +1,7 @@
-package your.newproject.rename.dto;
+package dk.gatchaz.server.dto;
 
-import your.newproject.rename.exception.CommonException;
-import your.newproject.rename.exception.ErrorCode;
+import dk.gatchaz.server.exception.CommonException;
+import dk.gatchaz.server.exception.ErrorCode;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.annotation.Nullable;
 import jakarta.validation.constraints.NotNull;

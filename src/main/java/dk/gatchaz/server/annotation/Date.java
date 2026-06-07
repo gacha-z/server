@@ -1,4 +1,4 @@
-package your.newproject.rename.annotation;
+package dk.gatchaz.server.annotation;
 import jakarta.validation.Constraint;
 import jakarta.validation.Payload;
 

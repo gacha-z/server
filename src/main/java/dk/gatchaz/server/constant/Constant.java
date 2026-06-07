@@ -1,4 +1,4 @@
-package your.newproject.rename.constant;
+package dk.gatchaz.server.constant;
 
 import java.util.List;
 

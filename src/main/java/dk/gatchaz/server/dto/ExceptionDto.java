@@ -1,6 +1,6 @@
-package your.newproject.rename.dto;
+package dk.gatchaz.server.dto;
 
-import your.newproject.rename.exception.ErrorCode;
+import dk.gatchaz.server.exception.ErrorCode;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;

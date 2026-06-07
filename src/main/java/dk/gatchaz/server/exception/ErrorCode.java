@@ -1,4 +1,4 @@
-package your.newproject.rename.exception;
+package dk.gatchaz.server.exception;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

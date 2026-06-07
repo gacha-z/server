@@ -1,4 +1,4 @@
-package your.newproject.rename.type;
+package dk.gatchaz.server.type;
 
 public class EProviderFactory {
     public static EProvider of(String provider) {
