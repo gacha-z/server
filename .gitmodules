@@ -1,0 +1,3 @@
+[submodule "Server-Secret"]
+	path = Server-Secret
+	url = https://github.com/gacha-z/server-secret.git
