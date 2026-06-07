@@ -5,17 +5,122 @@
 
     <select id="selectRandomRegions" resultType="dk.gatchaz.server.trip.dto.TripRegionDto">
         SELECT
-            trip_region_id,
-            trip_region_code,
-            trip_region_name,
-            latitude,
-            longitude,
-            use_yn,
-            created_at
-        FROM trip_region
-        WHERE use_yn = 'Y'
+            tr.trip_region_id,
+            tr.trip_region_code,
+            tr.trip_region_name,
+            tr.latitude,
+            tr.longitude,
+            tr.use_yn,
+            tr.created_at
+        FROM trip_region tr
+        INNER JOIN trip t
+            ON t.trip_id = #{tripId}
+            AND t.trip_region_id IS NULL
+        LEFT JOIN trip_candidate tc
+            ON tc.trip_region_id = tr.trip_region_id
+            AND tc.trip_id = #{tripId}
+            AND tc.selected_yn = 'Y'
+        <where>
+            AND tr.use_yn = 'Y'
+            AND tc.trip_candidate_id IS NULL
+        </where>
         ORDER BY RAND()
         LIMIT #{cnt}
     </select>
+
+    <insert id="insertTripCandidates">
+        INSERT INTO
+            trip_candidate(
+                trip_id,
+                trip_region_id,
+                selected_yn,
+                reroll_count,
+                use_yn,
+                created_at
+            )
+        VALUES
+        <foreach collection="regions" item="region" separator=",">
+            (
+                #{tripId},
+                #{region.tripRegionId},
+                'N',
+                1,
+                'Y',
+                NOW()
+            )
+        </foreach>
+    </insert>
+
+    <select id="selectRerollRegion" resultType="dk.gatchaz.server.trip.dto.TripRegionDto">
+        SELECT
+            tr.trip_region_id,
+            tr.trip_region_code,
+            tr.trip_region_name,
+            tr.latitude,
+            tr.longitude,
+            tr.use_yn,
+            tr.created_at
+        FROM trip_region tr
+        INNER JOIN trip t
+            ON t.trip_id = #{tripId}
+            AND t.trip_region_id IS NULL
+        LEFT JOIN trip_candidate tc
+            ON tc.trip_id = #{tripId}
+            AND tc.trip_region_id = tr.trip_region_id
+        <where>
+            AND tr.use_yn = 'Y'
+            <!-- 해당 여행에서 한 번이라도 후보로 등장한 지역(현재 활성 + 리롤로 버려진 이력)은 모두 제외 -->
+            AND tc.trip_candidate_id IS NULL
+        </where>
+        ORDER BY RAND()
+        LIMIT 1
+    </select>
+
+    <select id="selectRerollCount" resultType="java.lang.Integer">
+        SELECT
+            reroll_count
+        FROM trip_candidate
+        <where>
+            AND trip_candidate_id = #{tripCandidateId}
+            AND trip_id = #{tripId}
+            AND selected_yn = 'N'
+            AND use_yn = 'Y'
+        </where>
+    </select>
+
+    <update id="deactivateTripCandidate">
+        UPDATE
+            trip_candidate
+        SET
+            use_yn = 'N'
+        <where>
+            AND trip_candidate_id = #{tripCandidateId}
+            AND trip_id = #{tripId}
+            AND selected_yn = 'N'
+            AND use_yn = 'Y'
+            AND reroll_count &gt; 0
+        </where>
+    </update>
+
+    <insert id="insertRerolledCandidate">
+        INSERT INTO
+            trip_candidate(
+                trip_id,
+                trip_region_id,
+                selected_yn,
+                reroll_count,
+                use_yn,
+                created_at
+            )
+        VALUES
+            (
+                #{tripId},
+                #{tripRegionId},
+                'N',
+                #{rerollCount},
+                'Y',
+                NOW()
+            )
+    </insert>
 
 </mapper>
