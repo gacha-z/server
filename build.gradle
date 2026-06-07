@@ -22,6 +22,16 @@ repositories {
     mavenCentral()
 }
 
+sourceSets {
+    main {
+        resources {
+            // 매퍼 XML을 매퍼 인터페이스와 같은 위치(src/main/java)에 두기 위해 추가
+            srcDirs += 'src/main/java'
+            exclude '**/*.java'
+        }
+    }
+}
+
 tasks.register('copyPrivate', Copy) {
     from('Server-Secret') {
         include '*.yml'

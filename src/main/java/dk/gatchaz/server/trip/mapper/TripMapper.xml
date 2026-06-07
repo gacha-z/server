@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dk.gatchaz.server.trip.mapper.TripMapper">
+
+    <select id="selectRandomRegions" resultType="dk.gatchaz.server.trip.dto.TripRegionDto">
+        SELECT
+            trip_region_id,
+            trip_region_code,
+            trip_region_name,
+            latitude,
+            longitude,
+            use_yn,
+            created_at
+        FROM trip_region
+        WHERE use_yn = 'Y'
+        ORDER BY RAND()
+        LIMIT #{cnt}
+    </select>
+
+</mapper>
