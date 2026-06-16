@@ -2,12 +2,15 @@ package dk.gatchaz.server.trip.controller;
 
 import dk.gatchaz.server.dto.ResponseDto;
 import dk.gatchaz.server.trip.dto.TripRegionDto;
+import dk.gatchaz.server.trip.dto.TripRerollRequest;
 import dk.gatchaz.server.trip.service.TripService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -36,8 +39,7 @@ public class TripController {
      */
     @Operation(summary = "추천 여행 지역 리롤", description = "특정 후보(tripCandidateId)를 기존 후보와 중복되지 않는 새 지역으로 교체한다. 후보당 1회만 가능하다.")
     @PatchMapping("/regions/reroll")
-    public ResponseDto<TripRegionDto> rerollRegion(@RequestParam final Long tripId,
-                                                   @RequestParam final Long tripCandidateId) {
-        return ResponseDto.ok(tripService.rerollRegion(tripId, tripCandidateId));
+    public ResponseDto<TripRegionDto> rerollRegion(@Valid @RequestBody final TripRerollRequest request) {
+        return ResponseDto.ok(tripService.rerollRegion(request.getTripId(), request.getTripCandidateId()));
     }
 }
