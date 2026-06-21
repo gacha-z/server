@@ -2,12 +2,17 @@ package dk.gatchaz.server.trip.service;
 
 import dk.gatchaz.server.exception.CommonException;
 import dk.gatchaz.server.exception.ErrorCode;
+import dk.gatchaz.server.trip.dto.TripCreateParam;
+import dk.gatchaz.server.trip.dto.TripCreateRequest;
+import dk.gatchaz.server.trip.dto.TripCreateResponse;
 import dk.gatchaz.server.trip.dto.TripRegionDto;
 import dk.gatchaz.server.trip.mapper.TripMapper;
+import dk.gatchaz.server.type.ETripStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -17,6 +22,66 @@ public class TripService {
     private static final int RANDOM_REGION_COUNT = 3;
 
     private final TripMapper tripMapper;
+
+    /**
+     * 화면 입력값으로 여행을 생성한다. 지역은 이 단계에서 선택하지 않으므로 trip_region_id 는 비워둔다.
+     * 이후 추천/리롤로 후보를 받고, 지역 선택 단계(selectTripRegion)에서 trip_region_id 를 확정한다.
+     * 하나의 트랜잭션으로 처리되어, 아래 중 하나라도 실패하면 전체 롤백된다.
+     * 1. 화면 입력값과 생성자(owner), 상태를 trip 에 INSERT 한다.
+     * 2. 생성자(owner)를 member_rel_trip 에 OWNER 로 등록한다.
+     */
+    @Transactional
+    public TripCreateResponse createTrip(final TripCreateRequest request) {
+        // TODO: 로그인 연동 후 인증된 사용자(member_id)로 교체. 현재는 임시로 1번 회원을 owner 로 사용한다.
+        // final Long ownerMemberId = AuthUtil.getCurrentMemberId();
+        final Long ownerMemberId = 1L;
+
+        // 첫 미션 시각(시·분)을 여행 시작일과 합쳐 저장용 일시로 가공
+        final LocalDateTime missionStartAt = LocalDateTime.of(request.getStartDate(), request.getMissionStartTime());
+
+        // 1. 화면 입력값으로 trip 생성 (지역 미선택 상태, trip_region_id IS NULL)
+        final TripCreateParam param = TripCreateParam.builder()
+                .ownerMemberId(ownerMemberId)
+                .title(request.getTitle())
+                .startDate(request.getStartDate())
+                .endDate(request.getEndDate())
+                .memberLimit(request.getMemberLimit())
+                .missionMin(request.getMissionMin())
+                .missionMax(request.getMissionMax())
+                .missionStartAt(missionStartAt)
+                .status(ETripStatus.CREATED.name())
+                .build();
+
+        tripMapper.insertTrip(param);
+        final Long tripId = param.getTripId();
+
+        // 2. 생성자(owner)를 참여자로 등록
+        tripMapper.insertOwnerMember(tripId, ownerMemberId);
+
+        return new TripCreateResponse(tripId);
+    }
+
+    /**
+     * 사용자가 최종 선택한 지역을 여행에 반영한다. 하나의 트랜잭션으로 처리된다.
+     * 1. 선택한 지역을 trip_candidate 에서 selected_yn='Y'로 확정한다. (활성 후보가 아니면 실패)
+     * 2. 선택한 지역(trip_region_id)을 trip 에 반영한다. (지역 미선택 상태의 trip 이 없으면 실패)
+     */
+    @Transactional
+    public TripCreateResponse selectTripRegion(final Long tripId, final Long tripRegionId) {
+        // 1. 선택한 지역을 후보에서 확정 (선택한 지역이 활성 후보로 존재하지 않으면 잘못된 선택)
+        final int selected = tripMapper.markCandidateSelected(tripId, tripRegionId);
+        if (selected == 0) {
+            throw new CommonException(ErrorCode.INVALID_TRIP_REGION_SELECTION);
+        }
+
+        // 2. 선택한 지역을 trip 에 반영 (대상 trip 이 없거나 이미 지역이 선택되었으면 실패)
+        final int updated = tripMapper.updateTripRegion(tripId, tripRegionId);
+        if (updated == 0) {
+            throw new CommonException(ErrorCode.NOT_FOUND_TRIP);
+        }
+
+        return new TripCreateResponse(tripId);
+    }
 
     /**
      * 해당 여행(tripId)에서 아직 선택되지 않은 랜덤 지역 3개를 조회하고,

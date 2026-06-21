@@ -1,5 +1,6 @@
 package dk.gatchaz.server.trip.mapper;
 
+import dk.gatchaz.server.trip.dto.TripCreateParam;
 import dk.gatchaz.server.trip.dto.TripRegionDto;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -8,6 +9,29 @@ import java.util.List;
 
 @Mapper
 public interface TripMapper {
+
+    /**
+     * 화면 입력값과 생성자(owner), 상태로 trip 을 새로 생성한다. (trip_region_id 는 지역 선택 전이므로 NULL)
+     * 생성된 trip_id 는 param.tripId 에 채워진다.
+     */
+    int insertTrip(TripCreateParam param);
+
+    /**
+     * 사용자가 최종 선택한 지역(trip_region_id)을 trip 에 반영한다.
+     * 아직 지역이 선택되지 않은(trip_region_id IS NULL) trip 만 갱신하며, 대상이 없으면 0 을 반환한다.
+     */
+    int updateTripRegion(@Param("tripId") Long tripId, @Param("tripRegionId") Long tripRegionId);
+
+    /**
+     * 최종 선택한 지역의 활성 후보(use_yn='Y')를 selected_yn='Y'로 확정한다.
+     * 해당 지역이 활성 후보로 존재하지 않으면 0 을 반환한다.
+     */
+    int markCandidateSelected(@Param("tripId") Long tripId, @Param("tripRegionId") Long tripRegionId);
+
+    /**
+     * 여행 생성자(owner)를 해당 여행(tripId)의 참여자(member_rel_trip)로 등록한다. (role = 'OWNER')
+     */
+    int insertOwnerMember(@Param("tripId") Long tripId, @Param("memberId") Long memberId);
 
     /**
      * 사용 가능한(use_yn = 'Y') 여행 지역 중, 해당 여행(tripId)에서 아직 선택(selected_yn = 'Y')되지 않은

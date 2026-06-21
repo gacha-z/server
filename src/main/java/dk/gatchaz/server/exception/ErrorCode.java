@@ -61,6 +61,8 @@ public enum ErrorCode {
     // 여행 관련 에러 코드
     REROLL_NOT_AVAILABLE(50100, HttpStatus.CONFLICT, "더 이상 리롤할 수 없습니다."),
     NO_AVAILABLE_TRIP_REGION(50101, HttpStatus.BAD_REQUEST, "추천 가능한 여행 지역이 없습니다."),
+    NOT_FOUND_TRIP(40404, HttpStatus.NOT_FOUND, "해당 여행이 존재하지 않습니다."),
+    INVALID_TRIP_REGION_SELECTION(40010, HttpStatus.BAD_REQUEST, "선택한 여행 지역이 후보에 존재하지 않습니다."),
 
     ;
 

@@ -3,6 +3,79 @@
         "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="dk.gatchaz.server.trip.mapper.TripMapper">
 
+    <insert id="insertTrip" useGeneratedKeys="true" keyProperty="tripId" keyColumn="trip_id">
+        INSERT INTO
+            trip(
+                owner_member_id,
+                title,
+                start_date,
+                end_date,
+                member_limit,
+                mission_min,
+                mission_max,
+                mission_start_at,
+                status,
+                created_at
+            )
+        VALUES
+            (
+                #{ownerMemberId},
+                #{title},
+                #{startDate},
+                #{endDate},
+                #{memberLimit},
+                #{missionMin},
+                #{missionMax},
+                #{missionStartAt},
+                #{status},
+                NOW()
+            )
+    </insert>
+
+    <update id="updateTripRegion">
+        UPDATE
+            trip
+        SET
+            trip_region_id = #{tripRegionId},
+            updated_at = NOW()
+        WHERE
+            trip_id = #{tripId}
+            AND trip_region_id IS NULL
+    </update>
+
+    <update id="markCandidateSelected">
+        UPDATE
+            trip_candidate
+        SET
+            selected_yn = 'Y'
+        <where>
+            AND trip_id = #{tripId}
+            AND trip_region_id = #{tripRegionId}
+            AND use_yn = 'Y'
+        </where>
+    </update>
+
+    <insert id="insertOwnerMember">
+        INSERT INTO
+            member_rel_trip(
+                member_id,
+                trip_id,
+                role,
+                status,
+                joined_at,
+                created_at
+            )
+        VALUES
+            (
+                #{memberId},
+                #{tripId},
+                'OWNER',
+                'JOINED',
+                NOW(),
+                NOW()
+            )
+    </insert>
+
     <select id="selectRandomRegions" resultType="dk.gatchaz.server.trip.dto.TripRegionDto">
         SELECT
             tr.trip_region_id,

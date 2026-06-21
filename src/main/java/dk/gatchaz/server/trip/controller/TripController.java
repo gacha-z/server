@@ -1,7 +1,10 @@
 package dk.gatchaz.server.trip.controller;
 
 import dk.gatchaz.server.dto.ResponseDto;
+import dk.gatchaz.server.trip.dto.TripCreateRequest;
+import dk.gatchaz.server.trip.dto.TripCreateResponse;
 import dk.gatchaz.server.trip.dto.TripRegionDto;
+import dk.gatchaz.server.trip.dto.TripRegionSelectRequest;
 import dk.gatchaz.server.trip.dto.TripRerollRequest;
 import dk.gatchaz.server.trip.service.TripService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -10,6 +13,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -24,6 +28,24 @@ import java.util.List;
 public class TripController {
 
     private final TripService tripService;
+
+    /**
+     * 여행 생성
+     */
+    @Operation(summary = "여행 생성", description = "화면 입력값으로 여행을 생성하고 생성자를 OWNER 로 등록한다. 지역은 이 단계에서 선택하지 않으며(trip_region_id 는 NULL), 반환된 tripId 로 추천/리롤 후 지역 선택 API 를 호출한다.")
+    @PostMapping
+    public ResponseDto<TripCreateResponse> createTrip(@Valid @RequestBody final TripCreateRequest request) {
+        return ResponseDto.created(tripService.createTrip(request));
+    }
+
+    /**
+     * 최종 선택한 여행 지역 확정
+     */
+    @Operation(summary = "여행 지역 선택", description = "사용자가 최종 선택한 지역(tripRegionId)을 여행(tripId)에 반영한다. 해당 후보를 selected_yn='Y'로 확정하고 trip_region_id 를 저장한다. 하나라도 실패하면 전체 롤백된다.")
+    @PatchMapping("/regions/select")
+    public ResponseDto<TripCreateResponse> selectTripRegion(@Valid @RequestBody final TripRegionSelectRequest request) {
+        return ResponseDto.ok(tripService.selectTripRegion(request.getTripId(), request.getTripRegionId()));
+    }
 
     /**
      * 여행 생성 시 랜덤 지역 3개 추천
