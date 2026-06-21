@@ -63,6 +63,10 @@ public enum ErrorCode {
     NO_AVAILABLE_TRIP_REGION(50101, HttpStatus.BAD_REQUEST, "추천 가능한 여행 지역이 없습니다."),
     NOT_FOUND_TRIP(40404, HttpStatus.NOT_FOUND, "해당 여행이 존재하지 않습니다."),
     INVALID_TRIP_REGION_SELECTION(40010, HttpStatus.BAD_REQUEST, "선택한 여행 지역이 후보에 존재하지 않습니다."),
+    INVALID_INVITE_CODE(40405, HttpStatus.NOT_FOUND, "유효하지 않은 초대 코드입니다."),
+    TRIP_NOT_JOINABLE(40011, HttpStatus.BAD_REQUEST, "현재 참여할 수 없는 여행입니다."),
+    ALREADY_JOINED_TRIP(40902, HttpStatus.CONFLICT, "이미 참여한 여행입니다."),
+    TRIP_FULL(40903, HttpStatus.CONFLICT, "여행 정원이 가득 찼습니다."),
 
     ;
 

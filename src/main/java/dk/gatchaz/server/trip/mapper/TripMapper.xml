@@ -15,6 +15,7 @@
                 mission_max,
                 mission_start_at,
                 status,
+                invite_code,
                 created_at
             )
         VALUES
@@ -28,9 +29,56 @@
                 #{missionMax},
                 #{missionStartAt},
                 #{status},
+                #{inviteCode},
                 NOW()
             )
     </insert>
+
+    <select id="existsInviteCode" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM trip
+        WHERE invite_code = #{code}
+    </select>
+
+    <select id="selectInviteCode" resultType="java.lang.String">
+        SELECT
+            invite_code
+        FROM trip
+        WHERE trip_id = #{tripId}
+    </select>
+
+    <select id="selectTripByInviteCode" resultType="dk.gatchaz.server.trip.dto.TripJoinInfo">
+        SELECT
+            trip_id,
+            status,
+            member_limit
+        FROM trip
+        WHERE invite_code = #{code}
+    </select>
+
+    <select id="countJoinedMembers" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM member_rel_trip
+        WHERE trip_id = #{tripId}
+          AND status = 'JOINED'
+    </select>
+
+    <select id="existsTripMember" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM member_rel_trip
+        WHERE trip_id = #{tripId}
+          AND member_id = #{memberId}
+    </select>
+
+    <select id="existsMember" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM member
+        WHERE member_id = #{memberId}
+    </select>
 
     <update id="updateTripRegion">
         UPDATE
@@ -55,7 +103,7 @@
         </where>
     </update>
 
-    <insert id="insertOwnerMember">
+    <insert id="insertTripMember">
         INSERT INTO
             member_rel_trip(
                 member_id,
@@ -69,7 +117,7 @@
             (
                 #{memberId},
                 #{tripId},
-                'OWNER',
+                #{role},
                 'JOINED',
                 NOW(),
                 NOW()

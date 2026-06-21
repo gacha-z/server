@@ -3,6 +3,9 @@ package dk.gatchaz.server.trip.controller;
 import dk.gatchaz.server.dto.ResponseDto;
 import dk.gatchaz.server.trip.dto.TripCreateRequest;
 import dk.gatchaz.server.trip.dto.TripCreateResponse;
+import dk.gatchaz.server.trip.dto.TripInviteCodeResponse;
+import dk.gatchaz.server.trip.dto.TripJoinRequest;
+import dk.gatchaz.server.trip.dto.TripJoinResponse;
 import dk.gatchaz.server.trip.dto.TripRegionDto;
 import dk.gatchaz.server.trip.dto.TripRegionSelectRequest;
 import dk.gatchaz.server.trip.dto.TripRerollRequest;
@@ -13,6 +16,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -63,5 +67,23 @@ public class TripController {
     @PatchMapping("/regions/reroll")
     public ResponseDto<TripRegionDto> rerollRegion(@Valid @RequestBody final TripRerollRequest request) {
         return ResponseDto.ok(tripService.rerollRegion(request.getTripId(), request.getTripCandidateId()));
+    }
+
+    /**
+     * 여행 초대 코드 조회
+     */
+    @Operation(summary = "여행 초대 코드 조회", description = "여행 생성 시 발급된 만료 없는 초대 코드를 반환한다. 프론트에서 도메인을 붙여 링크로 사용한다. (예: travel-gacha.app/trip/{code})")
+    @GetMapping("/{tripId}/invite-code")
+    public ResponseDto<TripInviteCodeResponse> getInviteCode(@PathVariable final Long tripId) {
+        return ResponseDto.ok(tripService.getInviteCode(tripId));
+    }
+
+    /**
+     * 초대 링크로 여행 참여
+     */
+    @Operation(summary = "여행 참여", description = "초대 링크의 코드로 회원을 여행에 참여시킨다. 유효하지 않은 코드, 참여 불가 상태, 이미 참여, 정원 초과 시 실패한다.")
+    @PostMapping("/join")
+    public ResponseDto<TripJoinResponse> joinTrip(@Valid @RequestBody final TripJoinRequest request) {
+        return ResponseDto.ok(tripService.joinTrip(request.getCode(), request.getMemberId()));
     }
 }

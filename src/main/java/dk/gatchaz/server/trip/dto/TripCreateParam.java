@@ -8,7 +8,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * trip 생성(INSERT) 용 파라미터. 요청 DTO 와 서비스 계층의 보정값(ownerMemberId, status)을 분리한다.
+ * trip 생성(INSERT) 용 파라미터. 요청 DTO 와 서비스 계층의 보정값(ownerMemberId, status, inviteCode)을 분리한다.
  */
 @Getter
 @Setter
@@ -27,4 +27,7 @@ public class TripCreateParam {
     private Integer missionMax;
     private LocalDateTime missionStartAt;
     private String status;
+
+    /** 초대 링크 코드 (생성 시 발급, 영구) */
+    private String inviteCode;
 }

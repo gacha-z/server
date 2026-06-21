@@ -1,6 +1,7 @@
 package dk.gatchaz.server.trip.mapper;
 
 import dk.gatchaz.server.trip.dto.TripCreateParam;
+import dk.gatchaz.server.trip.dto.TripJoinInfo;
 import dk.gatchaz.server.trip.dto.TripRegionDto;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -29,9 +30,41 @@ public interface TripMapper {
     int markCandidateSelected(@Param("tripId") Long tripId, @Param("tripRegionId") Long tripRegionId);
 
     /**
-     * 여행 생성자(owner)를 해당 여행(tripId)의 참여자(member_rel_trip)로 등록한다. (role = 'OWNER')
+     * 회원을 해당 여행(tripId)의 참여자(member_rel_trip)로 등록한다. (status = 'JOINED')
      */
-    int insertOwnerMember(@Param("tripId") Long tripId, @Param("memberId") Long memberId);
+    int insertTripMember(@Param("tripId") Long tripId,
+                         @Param("memberId") Long memberId,
+                         @Param("role") String role);
+
+    /**
+     * 초대 코드의 중복 여부를 확인한다. (이미 존재하면 1 이상)
+     */
+    int existsInviteCode(@Param("code") String code);
+
+    /**
+     * 해당 여행(tripId)의 초대 코드를 조회한다. trip 이 없으면 null.
+     */
+    String selectInviteCode(@Param("tripId") Long tripId);
+
+    /**
+     * 초대 코드로 여행을 조회한다. (참여 검증용 최소 정보) 코드가 유효하지 않으면 null.
+     */
+    TripJoinInfo selectTripByInviteCode(@Param("code") String code);
+
+    /**
+     * 해당 여행(tripId)의 현재 참여 중(status='JOINED') 인원 수를 조회한다.
+     */
+    int countJoinedMembers(@Param("tripId") Long tripId);
+
+    /**
+     * 회원이 이미 해당 여행(tripId)의 참여자로 등록되어 있는지 확인한다. (등록되어 있으면 1 이상)
+     */
+    int existsTripMember(@Param("tripId") Long tripId, @Param("memberId") Long memberId);
+
+    /**
+     * 회원(memberId)이 실제로 존재하는지 확인한다. (존재하면 1 이상)
+     */
+    int existsMember(@Param("memberId") Long memberId);
 
     /**
      * 사용 가능한(use_yn = 'Y') 여행 지역 중, 해당 여행(tripId)에서 아직 선택(selected_yn = 'Y')되지 않은
