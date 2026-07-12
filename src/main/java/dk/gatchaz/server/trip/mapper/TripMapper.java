@@ -3,6 +3,8 @@ package dk.gatchaz.server.trip.mapper;
 import dk.gatchaz.server.trip.dto.TripCreateParam;
 import dk.gatchaz.server.trip.dto.TripJoinInfo;
 import dk.gatchaz.server.trip.dto.TripRegionDto;
+import dk.gatchaz.server.trip.dto.TripSearchParam;
+import dk.gatchaz.server.trip.dto.TripSummaryResponse;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -10,6 +12,13 @@ import java.util.List;
 
 @Mapper
 public interface TripMapper {
+
+    /**
+     * 회원(memberId)이 참여(JOINED)한 여행을, 검색 조건(이름/지역/기간/상태)으로 필터링하여 조회한다.
+     * 커서(cursor)보다 이전 여행(trip_id 내림차순)만 size 개수만큼 조회한다.
+     * hasNext 판별을 위해 서비스에서 요청 개수 + 1 을 size 로 넘긴다.
+     */
+    List<TripSummaryResponse> selectTrips(TripSearchParam param);
 
     /**
      * 화면 입력값과 생성자(owner), 상태로 trip 을 새로 생성한다. (trip_region_id 는 지역 선택 전이므로 NULL)

@@ -80,6 +80,55 @@
         WHERE member_id = #{memberId}
     </select>
 
+    <select id="selectTrips" resultType="dk.gatchaz.server.trip.dto.TripSummaryResponse">
+        SELECT
+            t.trip_id,
+            t.title,
+            t.start_date,
+            t.end_date,
+            t.status,
+            t.member_limit,
+            (
+                SELECT COUNT(*)
+                FROM member_rel_trip mrt2
+                WHERE mrt2.trip_id = t.trip_id
+                  AND mrt2.status = 'JOINED'
+            ) AS joined_member_count,
+            t.trip_region_id,
+            tr.trip_region_name,
+            t.created_at
+        FROM trip t
+        INNER JOIN member_rel_trip mrt
+            ON mrt.trip_id = t.trip_id
+            AND mrt.member_id = #{memberId}
+            AND mrt.status = 'JOINED'
+        LEFT JOIN trip_region tr
+            ON tr.trip_region_id = t.trip_region_id
+        <where>
+            <if test="cursor != null">
+                AND t.trip_id &lt; #{cursor}
+            </if>
+            <if test="title != null and title != ''">
+                AND t.title LIKE CONCAT('%', #{title}, '%')
+            </if>
+            <if test="tripRegionId != null">
+                AND t.trip_region_id = #{tripRegionId}
+            </if>
+            <if test="status != null and status != ''">
+                AND t.status = #{status}
+            </if>
+            <!-- 여행 기간(start_date~end_date)이 검색 기간(dateFrom~dateTo)과 겹치는 여행 -->
+            <if test="dateFrom != null">
+                AND t.end_date &gt;= #{dateFrom}
+            </if>
+            <if test="dateTo != null">
+                AND t.start_date &lt;= #{dateTo}
+            </if>
+        </where>
+        ORDER BY t.trip_id DESC
+        LIMIT #{size}
+    </select>
+
     <update id="updateTripRegion">
         UPDATE
             trip

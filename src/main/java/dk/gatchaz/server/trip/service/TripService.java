@@ -8,7 +8,11 @@ import dk.gatchaz.server.trip.dto.TripCreateResponse;
 import dk.gatchaz.server.trip.dto.TripInviteCodeResponse;
 import dk.gatchaz.server.trip.dto.TripJoinInfo;
 import dk.gatchaz.server.trip.dto.TripJoinResponse;
+import dk.gatchaz.server.trip.dto.TripListResponse;
 import dk.gatchaz.server.trip.dto.TripRegionDto;
+import dk.gatchaz.server.trip.dto.TripSearchParam;
+import dk.gatchaz.server.trip.dto.TripSearchRequest;
+import dk.gatchaz.server.trip.dto.TripSummaryResponse;
 import dk.gatchaz.server.trip.mapper.TripMapper;
 import dk.gatchaz.server.trip.support.InviteCodeGenerator;
 import dk.gatchaz.server.type.ETripMemberRole;
@@ -66,6 +70,38 @@ public class TripService {
         tripMapper.insertTripMember(tripId, ownerMemberId, ETripMemberRole.OWNER.name());
 
         return new TripCreateResponse(tripId);
+    }
+
+    /**
+     * 로그인한 회원이 참여(JOINED)한 여행을 검색 조건(이름/지역/기간/상태)으로 필터링하여 조회한다.
+     * 커서 기반 무한 스크롤로, hasNext 판별을 위해 요청 개수 + 1 을 조회한 뒤 초과분을 잘라낸다.
+     */
+    @Transactional(readOnly = true)
+    public TripListResponse getTrips(final TripSearchRequest request) {
+        // TODO: 로그인 연동 후 인증된 사용자(member_id)로 교체. 현재는 임시로 1번 회원을 사용한다.
+        final Long memberId = 1L;
+
+        // size 범위 보정 (1~50)
+        final int size = Math.min(Math.max(request.getSize(), 1), 50);
+
+        final TripSearchParam param = TripSearchParam.builder()
+                .memberId(memberId)
+                .title(request.getTitle())
+                .tripRegionId(request.getTripRegionId())
+                .status(request.getStatus() == null ? null : request.getStatus().name())
+                .dateFrom(request.getDateFrom())
+                .dateTo(request.getDateTo())
+                .cursor(request.getCursor())
+                .size(size + 1) // 다음 페이지 존재 여부 판별용으로 1개 더 조회
+                .build();
+
+        final List<TripSummaryResponse> trips = tripMapper.selectTrips(param);
+
+        final boolean hasNext = trips.size() > size;
+        final List<TripSummaryResponse> pageTrips = hasNext ? trips.subList(0, size) : trips;
+        final Long nextCursor = hasNext ? pageTrips.get(pageTrips.size() - 1).getTripId() : null;
+
+        return new TripListResponse(pageTrips, nextCursor, hasNext);
     }
 
     /**
