@@ -3,19 +3,294 @@
         "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="dk.gatchaz.server.trip.mapper.TripMapper">
 
+    <insert id="insertTrip" useGeneratedKeys="true" keyProperty="tripId" keyColumn="trip_id">
+        INSERT INTO
+            trip(
+                owner_member_id,
+                title,
+                start_date,
+                end_date,
+                member_limit,
+                mission_min,
+                mission_max,
+                mission_start_at,
+                status,
+                invite_code,
+                created_at
+            )
+        VALUES
+            (
+                #{ownerMemberId},
+                #{title},
+                #{startDate},
+                #{endDate},
+                #{memberLimit},
+                #{missionMin},
+                #{missionMax},
+                #{missionStartAt},
+                #{status},
+                #{inviteCode},
+                NOW()
+            )
+    </insert>
+
+    <select id="existsInviteCode" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM trip
+        WHERE invite_code = #{code}
+    </select>
+
+    <select id="selectInviteCode" resultType="java.lang.String">
+        SELECT
+            invite_code
+        FROM trip
+        WHERE trip_id = #{tripId}
+    </select>
+
+    <select id="selectTripByInviteCode" resultType="dk.gatchaz.server.trip.dto.TripJoinInfo">
+        SELECT
+            trip_id,
+            status,
+            member_limit
+        FROM trip
+        WHERE invite_code = #{code}
+    </select>
+
+    <select id="countJoinedMembers" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM member_rel_trip
+        WHERE trip_id = #{tripId}
+          AND status = 'JOINED'
+    </select>
+
+    <select id="existsTripMember" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM member_rel_trip
+        WHERE trip_id = #{tripId}
+          AND member_id = #{memberId}
+    </select>
+
+    <select id="existsMember" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM member
+        WHERE member_id = #{memberId}
+    </select>
+
+    <select id="selectTrips" resultType="dk.gatchaz.server.trip.dto.TripSummaryResponse">
+        SELECT
+            t.trip_id,
+            t.title,
+            t.start_date,
+            t.end_date,
+            t.status,
+            t.member_limit,
+            (
+                SELECT COUNT(*)
+                FROM member_rel_trip mrt2
+                WHERE mrt2.trip_id = t.trip_id
+                  AND mrt2.status = 'JOINED'
+            ) AS joined_member_count,
+            t.trip_region_id,
+            tr.trip_region_name,
+            t.created_at
+        FROM trip t
+        INNER JOIN member_rel_trip mrt
+            ON mrt.trip_id = t.trip_id
+            AND mrt.member_id = #{memberId}
+            AND mrt.status = 'JOINED'
+        LEFT JOIN trip_region tr
+            ON tr.trip_region_id = t.trip_region_id
+        <where>
+            <if test="cursor != null">
+                AND t.trip_id &lt; #{cursor}
+            </if>
+            <if test="title != null and title != ''">
+                AND t.title LIKE CONCAT('%', #{title}, '%')
+            </if>
+            <if test="tripRegionId != null">
+                AND t.trip_region_id = #{tripRegionId}
+            </if>
+            <if test="status != null and status != ''">
+                AND t.status = #{status}
+            </if>
+            <!-- 여행 기간(start_date~end_date)이 검색 기간(dateFrom~dateTo)과 겹치는 여행 -->
+            <if test="dateFrom != null">
+                AND t.end_date &gt;= #{dateFrom}
+            </if>
+            <if test="dateTo != null">
+                AND t.start_date &lt;= #{dateTo}
+            </if>
+        </where>
+        ORDER BY t.trip_id DESC
+        LIMIT #{size}
+    </select>
+
+    <update id="updateTripRegion">
+        UPDATE
+            trip
+        SET
+            trip_region_id = #{tripRegionId},
+            updated_at = NOW()
+        WHERE
+            trip_id = #{tripId}
+            AND trip_region_id IS NULL
+    </update>
+
+    <update id="markCandidateSelected">
+        UPDATE
+            trip_candidate
+        SET
+            selected_yn = 'Y'
+        <where>
+            AND trip_id = #{tripId}
+            AND trip_region_id = #{tripRegionId}
+            AND use_yn = 'Y'
+        </where>
+    </update>
+
+    <insert id="insertTripMember">
+        INSERT INTO
+            member_rel_trip(
+                member_id,
+                trip_id,
+                role,
+                status,
+                joined_at,
+                created_at
+            )
+        VALUES
+            (
+                #{memberId},
+                #{tripId},
+                #{role},
+                'JOINED',
+                NOW(),
+                NOW()
+            )
+    </insert>
+
     <select id="selectRandomRegions" resultType="dk.gatchaz.server.trip.dto.TripRegionDto">
         SELECT
-            trip_region_id,
-            trip_region_code,
-            trip_region_name,
-            latitude,
-            longitude,
-            use_yn,
-            created_at
-        FROM trip_region
-        WHERE use_yn = 'Y'
+            tr.trip_region_id,
+            tr.trip_region_code,
+            tr.trip_region_name,
+            tr.latitude,
+            tr.longitude,
+            tr.use_yn,
+            tr.created_at
+        FROM trip_region tr
+        INNER JOIN trip t
+            ON t.trip_id = #{tripId}
+            AND t.trip_region_id IS NULL
+        LEFT JOIN trip_candidate tc
+            ON tc.trip_region_id = tr.trip_region_id
+            AND tc.trip_id = #{tripId}
+            AND tc.selected_yn = 'Y'
+        <where>
+            AND tr.use_yn = 'Y'
+            AND tc.trip_candidate_id IS NULL
+        </where>
         ORDER BY RAND()
         LIMIT #{cnt}
     </select>
+
+    <insert id="insertTripCandidates">
+        INSERT INTO
+            trip_candidate(
+                trip_id,
+                trip_region_id,
+                selected_yn,
+                reroll_count,
+                use_yn,
+                created_at
+            )
+        VALUES
+        <foreach collection="regions" item="region" separator=",">
+            (
+                #{tripId},
+                #{region.tripRegionId},
+                'N',
+                1,
+                'Y',
+                NOW()
+            )
+        </foreach>
+    </insert>
+
+    <select id="selectRerollRegion" resultType="dk.gatchaz.server.trip.dto.TripRegionDto">
+        SELECT
+            tr.trip_region_id,
+            tr.trip_region_code,
+            tr.trip_region_name,
+            tr.latitude,
+            tr.longitude,
+            tr.use_yn,
+            tr.created_at
+        FROM trip_region tr
+        INNER JOIN trip t
+            ON t.trip_id = #{tripId}
+            AND t.trip_region_id IS NULL
+        LEFT JOIN trip_candidate tc
+            ON tc.trip_id = #{tripId}
+            AND tc.trip_region_id = tr.trip_region_id
+        <where>
+            AND tr.use_yn = 'Y'
+            <!-- 해당 여행에서 한 번이라도 후보로 등장한 지역(현재 활성 + 리롤로 버려진 이력)은 모두 제외 -->
+            AND tc.trip_candidate_id IS NULL
+        </where>
+        ORDER BY RAND()
+        LIMIT 1
+    </select>
+
+    <select id="selectRerollCount" resultType="java.lang.Integer">
+        SELECT
+            reroll_count
+        FROM trip_candidate
+        <where>
+            AND trip_candidate_id = #{tripCandidateId}
+            AND trip_id = #{tripId}
+            AND selected_yn = 'N'
+            AND use_yn = 'Y'
+        </where>
+    </select>
+
+    <update id="deactivateTripCandidate">
+        UPDATE
+            trip_candidate
+        SET
+            use_yn = 'N'
+        <where>
+            AND trip_candidate_id = #{tripCandidateId}
+            AND trip_id = #{tripId}
+            AND selected_yn = 'N'
+            AND use_yn = 'Y'
+            AND reroll_count &gt; 0
+        </where>
+    </update>
+
+    <insert id="insertRerolledCandidate">
+        INSERT INTO
+            trip_candidate(
+                trip_id,
+                trip_region_id,
+                selected_yn,
+                reroll_count,
+                use_yn,
+                created_at
+            )
+        VALUES
+            (
+                #{tripId},
+                #{tripRegionId},
+                'N',
+                #{rerollCount},
+                'Y',
+                NOW()
+            )
+    </insert>
 
 </mapper>

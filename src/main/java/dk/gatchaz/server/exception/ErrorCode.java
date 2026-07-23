@@ -56,8 +56,19 @@ public enum ErrorCode {
     SERVER_ERROR(50000, HttpStatus.INTERNAL_SERVER_ERROR, "서버 에러 입니다."),
     ILLEGAL_STATE(50003, HttpStatus.INTERNAL_SERVER_ERROR, "잘못된 상태입니다."),
     RUNTIME_EXCEPTION(50004, HttpStatus.INTERNAL_SERVER_ERROR, "서버 오류입니다."),
-    EXTERNAL_API_ERROR(50300, HttpStatus.SERVICE_UNAVAILABLE, "외부 API 요청에 실패하였습니다.");
+    EXTERNAL_API_ERROR(50300, HttpStatus.SERVICE_UNAVAILABLE, "외부 API 요청에 실패하였습니다."),
 
+    // 여행 관련 에러 코드
+    REROLL_NOT_AVAILABLE(50100, HttpStatus.CONFLICT, "더 이상 리롤할 수 없습니다."),
+    NO_AVAILABLE_TRIP_REGION(50101, HttpStatus.BAD_REQUEST, "추천 가능한 여행 지역이 없습니다."),
+    NOT_FOUND_TRIP(40404, HttpStatus.NOT_FOUND, "해당 여행이 존재하지 않습니다."),
+    INVALID_TRIP_REGION_SELECTION(40010, HttpStatus.BAD_REQUEST, "선택한 여행 지역이 후보에 존재하지 않습니다."),
+    INVALID_INVITE_CODE(40405, HttpStatus.NOT_FOUND, "유효하지 않은 초대 코드입니다."),
+    TRIP_NOT_JOINABLE(40011, HttpStatus.BAD_REQUEST, "현재 참여할 수 없는 여행입니다."),
+    ALREADY_JOINED_TRIP(40902, HttpStatus.CONFLICT, "이미 참여한 여행입니다."),
+    TRIP_FULL(40903, HttpStatus.CONFLICT, "여행 정원이 가득 찼습니다."),
+
+    ;
 
     private final Integer code;
     private final HttpStatus httpStatus;
