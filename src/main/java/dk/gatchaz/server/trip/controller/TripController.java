@@ -85,9 +85,11 @@ public class TripController {
             @Parameter(description = "무한 스크롤 커서. 이전 응답의 nextCursor 값을 넣는다. 첫 조회 시 비운다.", example = "42")
             @RequestParam(required = false) final Long cursor,
             @Parameter(description = "한 번에 조회할 개수 (기본 10, 1~50 범위를 벗어나면 자동 보정)", example = "10")
-            @RequestParam(required = false, defaultValue = "10") final int size) {
+            @RequestParam(required = false, defaultValue = "10") final int size,
+            @Parameter(description = "조회 기준 회원 ID. 로그인 연동 전까지 요청으로 받는 선택값이며, 없으면 임시로 1번 회원을 사용한다.", example = "1")
+            @RequestParam(required = false) final Long memberId) {
         final TripSearchRequest request =
-                new TripSearchRequest(title, tripRegionId, status, dateFrom, dateTo, cursor, size);
+                new TripSearchRequest(title, tripRegionId, status, dateFrom, dateTo, cursor, size, memberId);
         return ResponseDto.ok(tripService.getTrips(request));
     }
 

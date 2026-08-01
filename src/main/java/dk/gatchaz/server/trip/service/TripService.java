@@ -42,9 +42,9 @@ public class TripService {
      */
     @Transactional
     public TripCreateResponse createTrip(final TripCreateRequest request) {
-        // TODO: 로그인 연동 후 인증된 사용자(member_id)로 교체. 현재는 임시로 1번 회원을 owner 로 사용한다.
+        // TODO: 로그인 연동 후 인증된 사용자(member_id)로 교체. 로그인 연동 전까지는 요청으로 받은 선택값을 쓰고, 없으면 임시로 1번 회원을 owner 로 사용한다.
         // final Long ownerMemberId = AuthUtil.getCurrentMemberId();
-        final Long ownerMemberId = 1L;
+        final Long ownerMemberId = request.getMemberId();
 
         // 첫 미션 시각(시·분)을 여행 시작일과 합쳐 저장용 일시로 가공
         final LocalDateTime missionStartAt = LocalDateTime.of(request.getStartDate(), request.getMissionStartTime());
@@ -78,8 +78,8 @@ public class TripService {
      */
     @Transactional(readOnly = true)
     public TripListResponse getTrips(final TripSearchRequest request) {
-        // TODO: 로그인 연동 후 인증된 사용자(member_id)로 교체. 현재는 임시로 1번 회원을 사용한다.
-        final Long memberId = 1L;
+        // TODO: 로그인 연동 후 인증된 사용자(member_id)로 교체. 로그인 연동 전까지는 요청으로 받은 선택값을 쓰고, 없으면 임시로 1번 회원을 사용한다.
+        final Long memberId = request.getMemberId() != null ? request.getMemberId() : 1L;
 
         // size 범위 보정 (1~50)
         final int size = Math.min(Math.max(request.getSize(), 1), 50);
