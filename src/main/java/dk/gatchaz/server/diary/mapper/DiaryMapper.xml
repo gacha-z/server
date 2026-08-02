@@ -9,6 +9,7 @@
                 trip_id,
                 member_id,
                 content,
+                diary_date,
                 visibility,
                 status,
                 is_ai_generated,
@@ -19,9 +20,10 @@
                 #{tripId},
                 #{memberId},
                 #{content},
+                #{diaryDate},
                 #{visibility},
                 'ACTIVE',
-                'N',
+                #{isAiGenerated},
                 NOW()
             )
     </insert>
@@ -32,6 +34,7 @@
             d.trip_id,
             d.member_id,
             d.content,
+            d.diary_date,
             d.visibility,
             d.status,
             d.is_ai_generated,
@@ -42,12 +45,22 @@
           AND (d.status IS NULL OR d.status != 'DELETED')
     </select>
 
+    <select id="countActiveDiaryByMemberAndDate" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM diary
+        WHERE member_id = #{memberId}
+          AND diary_date = #{diaryDate}
+          AND (status IS NULL OR status != 'DELETED')
+    </select>
+
     <select id="selectDiaries" resultType="dk.gatchaz.server.diary.dto.DiaryDetailResponse">
         SELECT
             d.diary_id,
             d.trip_id,
             d.member_id,
             d.content,
+            d.diary_date,
             d.visibility,
             d.status,
             d.is_ai_generated,
@@ -61,6 +74,9 @@
             </if>
             <if test="tripId != null">
                 AND d.trip_id = #{tripId}
+            </if>
+            <if test="diaryDate != null">
+                AND d.diary_date = #{diaryDate}
             </if>
             <if test="cursor != null">
                 AND d.diary_id &lt; #{cursor}
@@ -92,5 +108,36 @@
             diary_id = #{diaryId}
             AND (status IS NULL OR status != 'DELETED')
     </update>
+
+    <select id="selectTripContext" resultType="dk.gatchaz.server.diary.dto.DiaryTripContext">
+        SELECT
+            t.title,
+            tr.trip_region_name AS region_name,
+            t.start_date,
+            t.end_date
+        FROM trip t
+        LEFT JOIN trip_region tr
+            ON tr.trip_region_id = t.trip_region_id
+        WHERE t.trip_id = #{tripId}
+    </select>
+
+    <insert id="insertDiaryAiGeneration">
+        INSERT INTO
+            diary_ai_generation(
+                diary_id,
+                source_content,
+                generated_content,
+                selected_yn,
+                created_at
+            )
+        VALUES
+            (
+                #{diaryId},
+                #{sourceContent},
+                #{generatedContent},
+                'Y',
+                NOW()
+            )
+    </insert>
 
 </mapper>

@@ -4,6 +4,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDate;
+
 /**
  * 일기 목록 조회(SELECT) 용 파라미터. size 에는 다음 페이지 존재 여부(hasNext) 판별을 위해 요청 개수 + 1 이 담긴다.
  */
@@ -17,6 +19,9 @@ public class DiarySearchParam {
 
     /** 연결된 여행 ID (선택) */
     private Long tripId;
+
+    /** 일기 날짜 (선택) */
+    private LocalDate diaryDate;
 
     /** 무한 스크롤 커서 (이전 페이지 마지막 일기 ID) */
     private Long cursor;

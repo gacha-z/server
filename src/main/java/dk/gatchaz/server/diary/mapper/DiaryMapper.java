@@ -3,9 +3,11 @@ package dk.gatchaz.server.diary.mapper;
 import dk.gatchaz.server.diary.dto.DiaryCreateParam;
 import dk.gatchaz.server.diary.dto.DiaryDetailResponse;
 import dk.gatchaz.server.diary.dto.DiarySearchParam;
+import dk.gatchaz.server.diary.dto.DiaryTripContext;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Mapper
@@ -38,4 +40,22 @@ public interface DiaryMapper {
      * 일기(diaryId)를 소프트 삭제한다. (status → 'DELETED') 이미 삭제되었거나 없으면 0 을 반환한다.
      */
     int softDeleteDiary(@Param("diaryId") Long diaryId);
+
+    /**
+     * AI 프롬프트 보강용 여행 컨텍스트(제목/지역명/기간)를 조회한다. 해당 여행이 없으면 null.
+     */
+    DiaryTripContext selectTripContext(@Param("tripId") Long tripId);
+
+    /**
+     * AI 생성 이력(diary_ai_generation)을 1건 저장한다. (selected_yn='Y')
+     * AI로 생성해 저장한 일기(diaryId)에만 기록한다.
+     */
+    int insertDiaryAiGeneration(@Param("diaryId") Long diaryId,
+                                @Param("sourceContent") String sourceContent,
+                                @Param("generatedContent") String generatedContent);
+
+    /**
+     * 해당 회원(memberId)이 그 날짜(diaryDate)에 작성한, 삭제되지 않은 일기 수를 센다. (회원별 하루 1개 제한 검증용)
+     */
+    int countActiveDiaryByMemberAndDate(@Param("memberId") Long memberId, @Param("diaryDate") LocalDate diaryDate);
 }

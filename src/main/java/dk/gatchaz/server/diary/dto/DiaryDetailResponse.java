@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -19,7 +20,7 @@ public class DiaryDetailResponse {
     @Schema(description = "일기 ID", example = "1")
     private Long diaryId;
 
-    @Schema(description = "연결된 여행 ID", example = "42")
+    @Schema(description = "연결된 여행 ID", example = "1")
     private Long tripId;
 
     @Schema(description = "작성자 회원 ID", example = "1")
@@ -27,6 +28,9 @@ public class DiaryDetailResponse {
 
     @Schema(description = "일기 본문", example = "오늘은 강릉 안목해변에서 커피를 마셨다.")
     private String content;
+
+    @Schema(description = "일기 날짜", example = "2026-08-01")
+    private LocalDate diaryDate;
 
     @Schema(description = "공개 범위 (PRIVATE / TEAM / PUBLIC)", example = "TEAM")
     private String visibility;

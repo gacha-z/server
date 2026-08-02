@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
 @Schema(description = "여행 요약 정보")
 public class TripSummaryResponse {
 
-    @Schema(description = "여행 ID", example = "42")
+    @Schema(description = "여행 ID", example = "1")
     private Long tripId;
 
     @Schema(description = "여행 이름", example = "제주 여름 여행")

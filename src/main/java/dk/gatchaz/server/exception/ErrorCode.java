@@ -70,6 +70,8 @@ public enum ErrorCode {
 
     // 일기 관련 에러 코드
     NOT_FOUND_DIARY(40406, HttpStatus.NOT_FOUND, "해당 일기가 존재하지 않습니다."),
+    AI_GENERATION_FAILED(50301, HttpStatus.SERVICE_UNAVAILABLE, "AI 일기 생성에 실패했습니다. 잠시 후 다시 시도해 주세요."),
+    ALREADY_EXISTS_DIARY_DATE(40904, HttpStatus.CONFLICT, "해당 날짜에 이미 작성한 일기가 있습니다."),
 
     ;
 

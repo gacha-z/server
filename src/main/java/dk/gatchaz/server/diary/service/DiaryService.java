@@ -2,13 +2,16 @@ package dk.gatchaz.server.diary.service;
 
 import dk.gatchaz.server.diary.dto.DiaryCreateParam;
 import dk.gatchaz.server.diary.dto.DiaryCreateRequest;
-import dk.gatchaz.server.diary.dto.DiaryCreateResponse;
 import dk.gatchaz.server.diary.dto.DiaryDetailResponse;
 import dk.gatchaz.server.diary.dto.DiaryListResponse;
 import dk.gatchaz.server.diary.dto.DiarySearchParam;
 import dk.gatchaz.server.diary.dto.DiarySearchRequest;
+import dk.gatchaz.server.diary.dto.DiaryGenerateRequest;
+import dk.gatchaz.server.diary.dto.DiaryGenerateResponse;
+import dk.gatchaz.server.diary.dto.DiaryTripContext;
 import dk.gatchaz.server.diary.dto.DiaryUpdateRequest;
 import dk.gatchaz.server.diary.mapper.DiaryMapper;
+import dk.gatchaz.server.diary.support.DiaryContentGenerator;
 import dk.gatchaz.server.exception.CommonException;
 import dk.gatchaz.server.exception.ErrorCode;
 import dk.gatchaz.server.type.EDiaryVisibility;
@@ -23,27 +26,56 @@ import java.util.List;
 public class DiaryService {
 
     private final DiaryMapper diaryMapper;
+    private final DiaryContentGenerator diaryContentGenerator;
 
     /**
-     * 일기를 생성한다.
-     * trip_id / member_id 는 필수(요청값)이며, content 는 선택값으로 두어 추후 생성형 AI 로 본문을 채우는 확장에 대비한다.
-     * status 는 'ACTIVE', is_ai_generated 는 'N' 으로 서버(INSERT 쿼리)가 지정하고, visibility 미지정 시 TEAM 으로 보정한다.
+     * 일기를 저장한다. (본문 생성 로직 없음 — AI 생성은 generateDiary(/generate) 담당)
+     * content(직접 작성 또는 /generate 로 받은 AI 초안)를 그대로 저장하며, isAiGenerated=true 면 'Y', 아니면 'N' 으로 기록한다.
+     * trip_id / member_id 는 필수(요청값), status 는 'ACTIVE'(INSERT 쿼리), visibility 미지정 시 TEAM 으로 보정한다.
      */
     @Transactional
-    public DiaryCreateResponse createDiary(final DiaryCreateRequest request) {
+    public DiaryDetailResponse createDiary(final DiaryCreateRequest request) {
+        // 저장 전용: content(직접 작성 또는 /generate 로 받은 AI 초안)를 그대로 저장한다.
+        // AI 초안을 저장하는 경우 요청의 isAiGenerated=true 로 받아 'Y' 로 기록한다. (생성 로직은 /generate 담당)
+        // 회원 기준 하루 1개 제한: 같은 회원이 같은 날짜에 (삭제되지 않은) 일기가 이미 있으면 실패.
+        if (diaryMapper.countActiveDiaryByMemberAndDate(request.getMemberId(), request.getDiaryDate()) > 0) {
+            throw new CommonException(ErrorCode.ALREADY_EXISTS_DIARY_DATE);
+        }
+
         final String visibility =
                 (request.getVisibility() == null ? EDiaryVisibility.TEAM : request.getVisibility()).name();
+        final String isAiGenerated = Boolean.TRUE.equals(request.getIsAiGenerated()) ? "Y" : "N";
 
         final DiaryCreateParam param = DiaryCreateParam.builder()
                 .tripId(request.getTripId())
                 .memberId(request.getMemberId())
                 .content(request.getContent())
+                .diaryDate(request.getDiaryDate())
                 .visibility(visibility)
+                .isAiGenerated(isAiGenerated)
                 .build();
 
         diaryMapper.insertDiary(param);
 
-        return new DiaryCreateResponse(param.getDiaryId());
+        // AI로 생성한 일기면 생성 이력(diary_ai_generation)도 함께 기록한다. (같은 트랜잭션)
+        if ("Y".equals(isAiGenerated)) {
+            diaryMapper.insertDiaryAiGeneration(
+                    param.getDiaryId(), request.getSourceContent(), request.getContent());
+        }
+
+        return diaryMapper.selectDiary(param.getDiaryId());
+    }
+
+    /**
+     * 일기 내용(content)과 선택적 여행 컨텍스트로 AI가 일기 본문 초안을 생성해 반환한다. (저장하지 않음)
+     * 느린 AI 호출 동안 DB 커넥션을 점유하지 않도록 트랜잭션으로 묶지 않는다.
+     */
+    public DiaryGenerateResponse generateDiary(final DiaryGenerateRequest request) {
+        final DiaryTripContext context =
+                request.getTripId() == null ? null : diaryMapper.selectTripContext(request.getTripId());
+        final String content = diaryContentGenerator.generate(
+                request.getContent(), request.getPromptOverride(), context);
+        return new DiaryGenerateResponse(content, true);
     }
 
     /**
@@ -70,6 +102,7 @@ public class DiaryService {
         final DiarySearchParam param = DiarySearchParam.builder()
                 .memberId(request.getMemberId())
                 .tripId(request.getTripId())
+                .diaryDate(request.getDiaryDate())
                 .cursor(request.getCursor())
                 .size(size + 1) // 다음 페이지 존재 여부 판별용으로 1개 더 조회
                 .build();

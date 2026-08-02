@@ -31,8 +31,8 @@ public class SwaggerConfig {
 
     private Info apiInfo() {
         return new Info()
-                .title("Monodatum IoT API")
-                .description("IoT Server API 명세서")
+                .title("여행 가챠 (TravelGatcha) API")
+                .description("여행 가챠 API 명세서")
                 .version("1.0.0");
     }
 }
