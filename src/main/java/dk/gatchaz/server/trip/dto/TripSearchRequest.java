@@ -35,6 +35,6 @@ public class TripSearchRequest {
     /** 한 번에 조회할 개수 (1~50, 범위를 벗어나면 서비스에서 보정) */
     private int size;
 
-    /** 조회 기준 회원 ID. 로그인 연동 전까지 요청으로 받는 선택값이며, 없으면 서비스에서 임시로 1번 회원을 사용한다. */
+    /** 조회 기준 회원 ID. 로그인 연동 전까지 요청으로 받는 선택값이다. */
     private Long memberId;
 }

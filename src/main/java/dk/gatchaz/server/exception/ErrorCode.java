@@ -68,6 +68,9 @@ public enum ErrorCode {
     ALREADY_JOINED_TRIP(40902, HttpStatus.CONFLICT, "이미 참여한 여행입니다."),
     TRIP_FULL(40903, HttpStatus.CONFLICT, "여행 정원이 가득 찼습니다."),
 
+    // 일기 관련 에러 코드
+    NOT_FOUND_DIARY(40406, HttpStatus.NOT_FOUND, "해당 일기가 존재하지 않습니다."),
+
     ;
 
     private final Integer code;

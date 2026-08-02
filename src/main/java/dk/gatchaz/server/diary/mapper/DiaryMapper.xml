@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dk.gatchaz.server.diary.mapper.DiaryMapper">
+
+    <insert id="insertDiary" useGeneratedKeys="true" keyProperty="diaryId" keyColumn="diary_id">
+        INSERT INTO
+            diary(
+                trip_id,
+                member_id,
+                content,
+                visibility,
+                status,
+                is_ai_generated,
+                created_at
+            )
+        VALUES
+            (
+                #{tripId},
+                #{memberId},
+                #{content},
+                #{visibility},
+                'ACTIVE',
+                'N',
+                NOW()
+            )
+    </insert>
+
+    <select id="selectDiary" resultType="dk.gatchaz.server.diary.dto.DiaryDetailResponse">
+        SELECT
+            d.diary_id,
+            d.trip_id,
+            d.member_id,
+            d.content,
+            d.visibility,
+            d.status,
+            d.is_ai_generated,
+            d.created_at,
+            d.updated_at
+        FROM diary d
+        WHERE d.diary_id = #{diaryId}
+          AND (d.status IS NULL OR d.status != 'DELETED')
+    </select>
+
+    <select id="selectDiaries" resultType="dk.gatchaz.server.diary.dto.DiaryDetailResponse">
+        SELECT
+            d.diary_id,
+            d.trip_id,
+            d.member_id,
+            d.content,
+            d.visibility,
+            d.status,
+            d.is_ai_generated,
+            d.created_at,
+            d.updated_at
+        FROM diary d
+        <where>
+            AND (d.status IS NULL OR d.status != 'DELETED')
+            <if test="memberId != null">
+                AND d.member_id = #{memberId}
+            </if>
+            <if test="tripId != null">
+                AND d.trip_id = #{tripId}
+            </if>
+            <if test="cursor != null">
+                AND d.diary_id &lt; #{cursor}
+            </if>
+        </where>
+        ORDER BY d.diary_id DESC
+        LIMIT #{size}
+    </select>
+
+    <update id="updateDiary">
+        UPDATE
+            diary
+        SET
+            content = #{content},
+            visibility = #{visibility},
+            updated_at = NOW()
+        WHERE
+            diary_id = #{diaryId}
+            AND (status IS NULL OR status != 'DELETED')
+    </update>
+
+    <update id="softDeleteDiary">
+        UPDATE
+            diary
+        SET
+            status = 'DELETED',
+            updated_at = NOW()
+        WHERE
+            diary_id = #{diaryId}
+            AND (status IS NULL OR status != 'DELETED')
+    </update>
+
+</mapper>
