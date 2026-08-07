@@ -10,6 +10,7 @@ import dk.gatchaz.server.trip.dto.TripInviteCodeResponse;
 import dk.gatchaz.server.trip.dto.TripJoinInfo;
 import dk.gatchaz.server.trip.dto.TripJoinResponse;
 import dk.gatchaz.server.trip.dto.TripListResponse;
+import dk.gatchaz.server.trip.dto.TripMemberResponse;
 import dk.gatchaz.server.trip.dto.TripRegionDto;
 import dk.gatchaz.server.trip.dto.TripSearchParam;
 import dk.gatchaz.server.trip.dto.TripSearchRequest;
@@ -118,6 +119,149 @@ public class TripService {
     }
 
     /**
+     * 여행(tripId)에 참여(JOINED) 중인 팀원 목록을 참여 등록 순으로 조회한다. 여행이 없으면 예외를 던진다.
+     */
+    @Transactional(readOnly = true)
+    public List<TripMemberResponse> getTripMembers(final Long tripId) {
+        if (tripMapper.existsTrip(tripId) == 0) {
+            throw new CommonException(ErrorCode.NOT_FOUND_TRIP);
+        }
+        return tripMapper.selectTripMembers(tripId);
+    }
+
+    /**
+     * 방장(여행 생성자)이 팀원(memberId)을 여행(tripId)에서 강퇴한다.
+     * 1. 여행 존재 여부와 요청자가 방장인지 확인한다.
+     * 2. 방장 자신은 강퇴할 수 없다.
+     * 3. 참여(JOINED) 중인 팀원이면 강퇴 처리한다. (status 'JOINED' → 'KICKED', left_at 기록)
+     */
+    @Transactional
+    public void kickTripMember(final Long tripId, final Long memberId, final Long requestMemberId) {
+        // TODO: 로그인 연동 후 인증된 사용자(member_id)로 교체. 로그인 연동 전까지는 요청으로 방장 회원 ID 를 받는다.
+
+        // 1. 여행 존재 + 방장 확인
+        final Long ownerMemberId = tripMapper.selectTripOwnerMemberId(tripId);
+        if (ownerMemberId == null) {
+            throw new CommonException(ErrorCode.NOT_FOUND_TRIP);
+        }
+        if (!ownerMemberId.equals(requestMemberId)) {
+            throw new CommonException(ErrorCode.NOT_TRIP_OWNER);
+        }
+
+        // 2. 방장 자신은 강퇴 불가
+        if (ownerMemberId.equals(memberId)) {
+            throw new CommonException(ErrorCode.CANNOT_KICK_TRIP_OWNER);
+        }
+
+        // 3. 참여 중인 팀원 강퇴 (대상이 JOINED 상태가 아니면 실패)
+        final int kicked = tripMapper.kickTripMember(tripId, memberId);
+        if (kicked == 0) {
+            throw new CommonException(ErrorCode.NOT_FOUND_TRIP_MEMBER);
+        }
+    }
+
+    /**
+     * 팀원(memberId)이 여행(tripId)에서 스스로 나간다. 하나의 트랜잭션으로 처리된다.
+     * 1. 나가려는 사람이 방장인데 마지막 1명이면 나갈 수 없다. (여행 취소 API 를 이용해야 한다)
+     * 2. 참여(JOINED) 상태를 LEFT 로 변경하고 left_at 을 기록한다.
+     * 3. 나간 사람이 방장이면 남은 팀원 중 1명에게 무작위로 방장을 위임한다.
+     *    (member_rel_trip.role → OWNER, trip.owner_member_id 변경)
+     */
+    @Transactional
+    public void leaveTrip(final Long tripId, final Long memberId) {
+        // TODO: 로그인 연동 후 인증된 사용자(member_id)로 교체. 로그인 연동 전까지는 요청으로 회원 ID 를 받는다.
+
+        final Long ownerMemberId = tripMapper.selectTripOwnerMemberId(tripId);
+        if (ownerMemberId == null) {
+            throw new CommonException(ErrorCode.NOT_FOUND_TRIP);
+        }
+
+        final boolean isOwner = ownerMemberId.equals(memberId);
+
+        // 1. 방장이 마지막 1명이면 나가기 차단
+        if (isOwner && tripMapper.countJoinedMembers(tripId) <= 1) {
+            throw new CommonException(ErrorCode.LAST_TRIP_MEMBER_CANNOT_LEAVE);
+        }
+
+        // 2. 자진 탈퇴 처리 (참여 중이 아니면 실패)
+        final int left = tripMapper.leaveTripMember(tripId, memberId);
+        if (left == 0) {
+            throw new CommonException(ErrorCode.NOT_FOUND_TRIP_MEMBER);
+        }
+
+        // 3. 방장이 나가면 남은 팀원 중 무작위 1명에게 방장 위임
+        if (isOwner) {
+            final Long newOwnerMemberId = tripMapper.selectRandomJoinedMemberId(tripId);
+            if (newOwnerMemberId == null) {
+                // 동시에 다른 팀원이 나가 남은 인원이 없어진 경우. 전체 롤백되어 나가기도 취소된다.
+                throw new CommonException(ErrorCode.LAST_TRIP_MEMBER_CANNOT_LEAVE);
+            }
+            tripMapper.updateTripMemberRole(tripId, newOwnerMemberId, ETripMemberRole.OWNER.name());
+            tripMapper.updateTripOwner(tripId, newOwnerMemberId);
+        }
+    }
+
+    /**
+     * 방장(여행 생성자)이 지정한 팀원(newOwnerMemberId)에게 방장을 위임한다. 하나의 트랜잭션으로 처리된다.
+     * 1. 여행 존재 여부와 요청자가 방장인지 확인한다.
+     * 2. 위임 대상이 현재 방장 자신이면 실패한다.
+     * 3. 위임 대상을 OWNER 로 승격한다. (참여 중인 팀원이 아니면 실패)
+     * 4. 팀에 남는 기존 방장을 MEMBER 로 변경하고, trip 의 owner_member_id 를 새 방장으로 변경한다.
+     */
+    @Transactional
+    public void transferTripOwner(final Long tripId, final Long newOwnerMemberId, final Long requestMemberId) {
+        // TODO: 로그인 연동 후 인증된 사용자(member_id)로 교체. 로그인 연동 전까지는 요청으로 방장 회원 ID 를 받는다.
+
+        // 1. 여행 존재 + 방장 확인
+        final Long ownerMemberId = tripMapper.selectTripOwnerMemberId(tripId);
+        if (ownerMemberId == null) {
+            throw new CommonException(ErrorCode.NOT_FOUND_TRIP);
+        }
+        if (!ownerMemberId.equals(requestMemberId)) {
+            throw new CommonException(ErrorCode.NOT_TRIP_OWNER);
+        }
+
+        // 2. 자기 자신에게는 위임 불가
+        if (ownerMemberId.equals(newOwnerMemberId)) {
+            throw new CommonException(ErrorCode.ALREADY_TRIP_OWNER);
+        }
+
+        // 3. 위임 대상 승격 (참여 중인 팀원이 아니면 실패)
+        final int promoted = tripMapper.updateTripMemberRole(tripId, newOwnerMemberId, ETripMemberRole.OWNER.name());
+        if (promoted == 0) {
+            throw new CommonException(ErrorCode.NOT_FOUND_TRIP_MEMBER);
+        }
+
+        // 4. 기존 방장은 일반 팀원으로 변경하고 trip 에 새 방장 반영
+        tripMapper.updateTripMemberRole(tripId, ownerMemberId, ETripMemberRole.MEMBER.name());
+        tripMapper.updateTripOwner(tripId, newOwnerMemberId);
+    }
+
+    /**
+     * 방장(여행 생성자)이 여행(tripId)을 취소한다. (status 'CREATED' → 'CANCELLED')
+     * 마지막 1명 남은 방장이 여행을 정리할 때 사용한다. 팀원 참여 이력은 그대로 보존된다.
+     */
+    @Transactional
+    public void cancelTrip(final Long tripId, final Long requestMemberId) {
+        // TODO: 로그인 연동 후 인증된 사용자(member_id)로 교체. 로그인 연동 전까지는 요청으로 방장 회원 ID 를 받는다.
+
+        // 1. 여행 존재 + 방장 확인
+        final Long ownerMemberId = tripMapper.selectTripOwnerMemberId(tripId);
+        if (ownerMemberId == null) {
+            throw new CommonException(ErrorCode.NOT_FOUND_TRIP);
+        }
+        if (!ownerMemberId.equals(requestMemberId)) {
+            throw new CommonException(ErrorCode.NOT_TRIP_OWNER);
+        }
+
+        // 2. 취소 처리 (생성(CREATED) 상태가 아니면 실패)
+        final int cancelled = tripMapper.cancelTrip(tripId);
+        if (cancelled == 0) {
+            throw new CommonException(ErrorCode.TRIP_NOT_CANCELLABLE);
+        }
+    }
+
+    /**
      * 중복되지 않는 초대 코드를 생성한다. 충돌은 사실상 발생하지 않지만, 혹시 존재하면 다시 생성한다.
      */
     private String generateUniqueInviteCode() {
@@ -168,7 +312,7 @@ public class TripService {
             throw new CommonException(ErrorCode.TRIP_NOT_JOINABLE);
         }
 
-        // 4. 이미 참여한 회원인지 확인
+        // 4. 현재 참여(JOINED) 중인 회원인지 확인 (나갔거나 강퇴된 회원은 재참여 가능, 새 참여 이력이 생성된다)
         if (tripMapper.existsTripMember(trip.getTripId(), memberId) > 0) {
             throw new CommonException(ErrorCode.ALREADY_JOINED_TRIP);
         }

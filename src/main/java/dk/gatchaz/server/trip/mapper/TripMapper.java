@@ -3,6 +3,7 @@ package dk.gatchaz.server.trip.mapper;
 import dk.gatchaz.server.trip.dto.TripCreateParam;
 import dk.gatchaz.server.trip.dto.TripDetailResponse;
 import dk.gatchaz.server.trip.dto.TripJoinInfo;
+import dk.gatchaz.server.trip.dto.TripMemberResponse;
 import dk.gatchaz.server.trip.dto.TripRegionDto;
 import dk.gatchaz.server.trip.dto.TripSearchParam;
 import dk.gatchaz.server.trip.dto.TripSummaryResponse;
@@ -25,6 +26,60 @@ public interface TripMapper {
      * 여행(tripId) 단건의 상세 정보(기본 정보 + 미션 설정 + 지역 + 참여 인원 수)를 조회한다. 없으면 null.
      */
     TripDetailResponse selectTrip(@Param("tripId") Long tripId);
+
+    /**
+     * 여행(tripId)이 실제로 존재하는지 확인한다. (존재하면 1 이상)
+     */
+    int existsTrip(@Param("tripId") Long tripId);
+
+    /**
+     * 여행(tripId)에 참여(JOINED) 중인 팀원 목록을 참여 등록 순(member_rel_id 오름차순)으로 조회한다.
+     * 생성자(OWNER)가 여행 생성 시 가장 먼저 등록되므로 목록의 처음에 온다.
+     */
+    List<TripMemberResponse> selectTripMembers(@Param("tripId") Long tripId);
+
+    /**
+     * 여행(tripId)의 생성자(owner) 회원 ID를 조회한다. trip 이 없으면 null.
+     */
+    Long selectTripOwnerMemberId(@Param("tripId") Long tripId);
+
+    /**
+     * 여행(tripId)에 참여(JOINED) 중인 팀원(memberId)을 강퇴 처리한다. (status 'JOINED' → 'KICKED', left_at 기록)
+     * 참여 중인 팀원이 아니면 0 을 반환한다.
+     */
+    int kickTripMember(@Param("tripId") Long tripId, @Param("memberId") Long memberId);
+
+    /**
+     * 여행(tripId)에 참여(JOINED) 중인 팀원(memberId)을 자진 탈퇴 처리한다. (status 'JOINED' → 'LEFT', left_at 기록)
+     * 참여 중인 팀원이 아니면 0 을 반환한다.
+     */
+    int leaveTripMember(@Param("tripId") Long tripId, @Param("memberId") Long memberId);
+
+    /**
+     * 여행(tripId)에 참여(JOINED) 중인 팀원 중 1명을 무작위로 조회한다. (방장 위임용) 없으면 null.
+     * 대상이 여행 정원(member_limit) 이내의 소수이므로 ORDER BY RAND() 비용은 무시할 수준이다.
+     */
+    Long selectRandomJoinedMemberId(@Param("tripId") Long tripId);
+
+    /**
+     * 여행(tripId)에 참여(JOINED) 중인 팀원(memberId)의 역할을 변경한다.
+     * (방장 위임 시 새 방장은 OWNER 로 승격, 팀에 남는 기존 방장은 MEMBER 로 변경)
+     * 참여 중인 팀원이 아니면 0 을 반환한다.
+     */
+    int updateTripMemberRole(@Param("tripId") Long tripId,
+                             @Param("memberId") Long memberId,
+                             @Param("role") String role);
+
+    /**
+     * 여행(tripId)의 생성자(owner_member_id)를 새 방장(ownerMemberId)으로 변경한다.
+     */
+    int updateTripOwner(@Param("tripId") Long tripId, @Param("ownerMemberId") Long ownerMemberId);
+
+    /**
+     * 여행(tripId)을 취소 처리한다. (status 'CREATED' → 'CANCELLED')
+     * 생성(CREATED) 상태가 아니면 0 을 반환한다.
+     */
+    int cancelTrip(@Param("tripId") Long tripId);
 
     /**
      * 화면 입력값과 생성자(owner), 상태로 trip 을 새로 생성한다. (trip_region_id 는 지역 선택 전이므로 NULL)
@@ -72,7 +127,8 @@ public interface TripMapper {
     int countJoinedMembers(@Param("tripId") Long tripId);
 
     /**
-     * 회원이 이미 해당 여행(tripId)의 참여자로 등록되어 있는지 확인한다. (등록되어 있으면 1 이상)
+     * 회원이 현재 해당 여행(tripId)에 참여(JOINED) 중인지 확인한다. (참여 중이면 1 이상)
+     * 나갔거나(LEFT) 강퇴된(KICKED) 이력만 있는 회원은 0 을 반환하므로 재참여가 가능하다.
      */
     int existsTripMember(@Param("tripId") Long tripId, @Param("memberId") Long memberId);
 

@@ -71,6 +71,7 @@
         FROM member_rel_trip
         WHERE trip_id = #{tripId}
           AND member_id = #{memberId}
+          AND status = 'JOINED'
     </select>
 
     <select id="existsMember" resultType="int">
@@ -157,6 +158,105 @@
             ON tr.trip_region_id = t.trip_region_id
         WHERE t.trip_id = #{tripId}
     </select>
+
+    <select id="existsTrip" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM trip
+        WHERE trip_id = #{tripId}
+    </select>
+
+    <select id="selectTripMembers" resultType="dk.gatchaz.server.trip.dto.TripMemberResponse">
+        SELECT
+            m.member_id,
+            m.nickname,
+            m.profile_image_url,
+            mrt.role,
+            mrt.joined_at
+        FROM member_rel_trip mrt
+        INNER JOIN member m
+            ON m.member_id = mrt.member_id
+        WHERE mrt.trip_id = #{tripId}
+          AND mrt.status = 'JOINED'
+        ORDER BY mrt.member_rel_id ASC
+    </select>
+
+    <select id="selectTripOwnerMemberId" resultType="java.lang.Long">
+        SELECT
+            owner_member_id
+        FROM trip
+        WHERE trip_id = #{tripId}
+    </select>
+
+    <update id="kickTripMember">
+        UPDATE
+            member_rel_trip
+        SET
+            status = 'KICKED',
+            left_at = NOW(),
+            updated_at = NOW()
+        WHERE
+            trip_id = #{tripId}
+            AND member_id = #{memberId}
+            AND status = 'JOINED'
+    </update>
+
+    <update id="leaveTripMember">
+        UPDATE
+            member_rel_trip
+        SET
+            status = 'LEFT',
+            left_at = NOW(),
+            updated_at = NOW()
+        WHERE
+            trip_id = #{tripId}
+            AND member_id = #{memberId}
+            AND status = 'JOINED'
+    </update>
+
+    <!-- 방장 위임 대상 무작위 조회. 대상이 여행 정원 이내의 소수 행이라 ORDER BY RAND() 비용은 무시할 수준 -->
+    <select id="selectRandomJoinedMemberId" resultType="java.lang.Long">
+        SELECT
+            member_id
+        FROM member_rel_trip
+        WHERE trip_id = #{tripId}
+          AND status = 'JOINED'
+        ORDER BY RAND()
+        LIMIT 1
+    </select>
+
+    <update id="updateTripMemberRole">
+        UPDATE
+            member_rel_trip
+        SET
+            role = #{role},
+            updated_at = NOW()
+        WHERE
+            trip_id = #{tripId}
+            AND member_id = #{memberId}
+            AND status = 'JOINED'
+    </update>
+
+    <update id="updateTripOwner">
+        UPDATE
+            trip
+        SET
+            owner_member_id = #{ownerMemberId},
+            updated_at = NOW()
+        WHERE
+            trip_id = #{tripId}
+    </update>
+
+    <update id="cancelTrip">
+        UPDATE
+            trip
+        SET
+            status = 'CANCELLED',
+            updated_at = NOW()
+        WHERE
+            trip_id = #{tripId}
+            AND status = 'CREATED'
+    </update>
 
     <update id="updateTripRegion">
         UPDATE

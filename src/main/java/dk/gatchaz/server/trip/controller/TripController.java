@@ -8,6 +8,7 @@ import dk.gatchaz.server.trip.dto.TripInviteCodeResponse;
 import dk.gatchaz.server.trip.dto.TripJoinRequest;
 import dk.gatchaz.server.trip.dto.TripJoinResponse;
 import dk.gatchaz.server.trip.dto.TripListResponse;
+import dk.gatchaz.server.trip.dto.TripMemberResponse;
 import dk.gatchaz.server.trip.dto.TripRegionDto;
 import dk.gatchaz.server.trip.dto.TripRegionSelectRequest;
 import dk.gatchaz.server.trip.dto.TripRerollRequest;
@@ -20,6 +21,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -115,6 +117,52 @@ public class TripController {
     }
 
     /**
+     * 여행 참여 팀원 목록 조회
+     */
+    @Operation(
+            summary = "여행 참여 팀원 목록 조회",
+            description = """
+                    여행(tripId)에 참여(JOINED) 중인 팀원 목록을 참여 등록 순으로 조회한다. 없는 여행이면 404 를 반환한다.
+
+                    - 생성자(OWNER)가 여행 생성 시 가장 먼저 등록되므로 목록의 처음에 온다.
+                    - `role` 은 OWNER(여행 생성자) / MEMBER(참여자) 이다.
+                    - 인원이 정원(memberLimit) 이내의 소수이므로 페이징 없이 전체를 반환한다.
+                    - `nickname`, `profileImageUrl` 은 회원이 설정하지 않았으면 null 일 수 있다.
+                    """)
+    @GetMapping("/{tripId}/members")
+    public ResponseDto<List<TripMemberResponse>> getTripMembers(
+            @Parameter(description = "조회할 여행 ID", example = "1") @PathVariable final Long tripId) {
+        return ResponseDto.ok(tripService.getTripMembers(tripId));
+    }
+
+    /**
+     * 팀원 강퇴 (방장 전용)
+     */
+    @Operation(
+            summary = "여행 팀원 강퇴",
+            description = """
+                    방장(여행 생성자)이 팀원을 여행에서 강퇴한다. 강퇴된 팀원은 팀원 목록에서 제외되고 정원에서 빠진다.
+
+                    ### 실패 응답
+                    - 요청자(`requestMemberId`)가 방장이 아니면 **403** (NOT_TRIP_OWNER)
+                    - 방장 자신을 강퇴하려 하면 **400** (CANNOT_KICK_TRIP_OWNER)
+                    - 여행이 없으면 **404** (NOT_FOUND_TRIP), 대상이 참여 중인 팀원이 아니면 **404** (NOT_FOUND_TRIP_MEMBER)
+
+                    ### 참고
+                    - 강퇴는 이력 보존을 위해 소프트 처리된다. (참여 상태 'JOINED' → 'KICKED', left_at 기록)
+                    - 강퇴된 회원도 초대 코드로 다시 참여할 수 있다. (재참여 시 새 참여 이력 생성)
+                    """)
+    @DeleteMapping("/{tripId}/members/{memberId}")
+    public ResponseDto<Void> kickTripMember(
+            @Parameter(description = "여행 ID", example = "1") @PathVariable final Long tripId,
+            @Parameter(description = "강퇴할 팀원 회원 ID", example = "2") @PathVariable final Long memberId,
+            @Parameter(description = "요청자(방장) 회원 ID. 로그인 연동 전까지 요청으로 받는다.", example = "1")
+            @RequestParam final Long requestMemberId) {
+        tripService.kickTripMember(tripId, memberId, requestMemberId);
+        return ResponseDto.<Void>ok(null);
+    }
+
+    /**
      * 최종 선택한 여행 지역 확정
      */
     @Operation(summary = "여행 지역 선택", description = "사용자가 최종 선택한 지역(tripRegionId)을 여행(tripId)에 반영한다. 해당 후보를 selected_yn='Y'로 확정하고 trip_region_id 를 저장한다. 하나라도 실패하면 전체 롤백된다.")
@@ -153,9 +201,95 @@ public class TripController {
     /**
      * 초대 링크로 여행 참여
      */
-    @Operation(summary = "여행 참여", description = "초대 링크의 코드로 회원을 여행에 참여시킨다. 유효하지 않은 코드, 참여 불가 상태, 이미 참여, 정원 초과 시 실패한다.")
+    @Operation(summary = "여행 참여", description = "초대 링크의 코드로 회원을 여행에 참여시킨다. 유효하지 않은 코드, 참여 불가 상태, 이미 참여 중, 정원 초과 시 실패한다. 이전에 나갔거나(LEFT) 강퇴된(KICKED) 회원도 다시 참여할 수 있다. (재참여 시 새 참여 이력 생성)")
     @PostMapping("/join")
     public ResponseDto<TripJoinResponse> joinTrip(@Valid @RequestBody final TripJoinRequest request) {
         return ResponseDto.ok(tripService.joinTrip(request.getCode(), request.getMemberId()));
+    }
+
+    /**
+     * 방장 위임 (방장 전용)
+     */
+    @Operation(
+            summary = "방장 위임",
+            description = """
+                    방장(여행 생성자)이 지정한 팀원에게 방장 권한을 위임한다. 기존 방장은 일반 팀원(MEMBER)으로 팀에 남는다.
+
+                    ### 실패 응답
+                    - 여행이 없으면 **404** (NOT_FOUND_TRIP)
+                    - 요청자(`requestMemberId`)가 방장이 아니면 **403** (NOT_TRIP_OWNER)
+                    - 위임 대상이 현재 방장 자신이면 **400** (ALREADY_TRIP_OWNER)
+                    - 위임 대상이 참여 중인 팀원이 아니면 **404** (NOT_FOUND_TRIP_MEMBER)
+
+                    ### 참고
+                    - 위임 후 강퇴·여행 취소·방장 위임 등 방장 전용 기능은 새 방장만 사용할 수 있다.
+                    - 방장이 여행에서 나가면(`POST /{tripId}/leave`) 무작위로 위임되지만, 이 API 는 대상을 직접 지정한다.
+                    """)
+    @PatchMapping("/{tripId}/owner")
+    public ResponseDto<Void> transferTripOwner(
+            @Parameter(description = "여행 ID", example = "1") @PathVariable final Long tripId,
+            @Parameter(description = "방장을 위임받을 팀원 회원 ID", example = "2")
+            @RequestParam final Long newOwnerMemberId,
+            @Parameter(description = "요청자(현재 방장) 회원 ID. 로그인 연동 전까지 요청으로 받는다.", example = "1")
+            @RequestParam final Long requestMemberId) {
+        tripService.transferTripOwner(tripId, newOwnerMemberId, requestMemberId);
+        return ResponseDto.<Void>ok(null);
+    }
+
+    /**
+     * 여행 나가기 (자진 탈퇴)
+     */
+    @Operation(
+            summary = "여행 나가기",
+            description = """
+                    팀원이 스스로 여행에서 나간다. 나간 팀원은 팀원 목록에서 제외되고 정원에서 빠지며, 초대 코드로 다시 참여할 수 있다.
+
+                    ### 방장이 나가는 경우
+                    - 남은 팀원 중 1명에게 **무작위로 방장이 위임**된다. (위임받은 팀원의 role 이 OWNER 로 변경)
+                    - 방장이 **마지막 1명이면 나갈 수 없다.** (400, LAST_TRIP_MEMBER_CANNOT_LEAVE)
+                      이 경우 여행 취소 API(`PATCH /api/v1/trips/{tripId}/cancel`)로 여행을 정리한다.
+
+                    ### 실패 응답
+                    - 여행이 없으면 **404** (NOT_FOUND_TRIP)
+                    - 참여 중인 팀원이 아니면 **404** (NOT_FOUND_TRIP_MEMBER)
+                    - 방장이 마지막 1명이면 **400** (LAST_TRIP_MEMBER_CANNOT_LEAVE)
+
+                    ### 참고
+                    - 나가기는 이력 보존을 위해 소프트 처리된다. (참여 상태 'JOINED' → 'LEFT', left_at 기록)
+                    """)
+    @PostMapping("/{tripId}/leave")
+    public ResponseDto<Void> leaveTrip(
+            @Parameter(description = "나갈 여행 ID", example = "1") @PathVariable final Long tripId,
+            @Parameter(description = "나가는 회원 ID. 로그인 연동 전까지 요청으로 받는다.", example = "2")
+            @RequestParam final Long memberId) {
+        tripService.leaveTrip(tripId, memberId);
+        return ResponseDto.<Void>ok(null);
+    }
+
+    /**
+     * 여행 취소 (방장 전용)
+     */
+    @Operation(
+            summary = "여행 취소",
+            description = """
+                    방장(여행 생성자)이 여행을 취소한다. (여행 상태 'CREATED' → 'CANCELLED')
+                    마지막 1명 남은 방장은 여행 나가기가 차단되므로, 이 API 로 여행을 정리한다.
+
+                    ### 참고
+                    - 취소된 여행은 초대 코드로 참여할 수 없다. (참여는 CREATED 상태만 가능)
+                    - 팀원 참여 이력과 일기 등 데이터는 그대로 보존되며, 여행 목록에서 status = CANCELLED 로 조회된다.
+
+                    ### 실패 응답
+                    - 여행이 없으면 **404** (NOT_FOUND_TRIP)
+                    - 요청자(`requestMemberId`)가 방장이 아니면 **403** (NOT_TRIP_OWNER)
+                    - 이미 취소되었거나 완료된 여행이면 **400** (TRIP_NOT_CANCELLABLE)
+                    """)
+    @PatchMapping("/{tripId}/cancel")
+    public ResponseDto<Void> cancelTrip(
+            @Parameter(description = "취소할 여행 ID", example = "1") @PathVariable final Long tripId,
+            @Parameter(description = "요청자(방장) 회원 ID. 로그인 연동 전까지 요청으로 받는다.", example = "1")
+            @RequestParam final Long requestMemberId) {
+        tripService.cancelTrip(tripId, requestMemberId);
+        return ResponseDto.<Void>ok(null);
     }
 }
