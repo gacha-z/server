@@ -15,6 +15,8 @@ import dk.gatchaz.server.trip.dto.TripRegionDto;
 import dk.gatchaz.server.trip.dto.TripSearchParam;
 import dk.gatchaz.server.trip.dto.TripSearchRequest;
 import dk.gatchaz.server.trip.dto.TripSummaryResponse;
+import dk.gatchaz.server.trip.dto.TripUpdateParam;
+import dk.gatchaz.server.trip.dto.TripUpdateRequest;
 import dk.gatchaz.server.trip.mapper.TripMapper;
 import dk.gatchaz.server.trip.support.InviteCodeGenerator;
 import dk.gatchaz.server.type.ETripMemberRole;
@@ -23,7 +25,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 
 @Service
@@ -116,6 +120,72 @@ public class TripService {
             throw new CommonException(ErrorCode.NOT_FOUND_TRIP);
         }
         return trip;
+    }
+
+    /**
+     * 방장(여행 생성자)이 여행(tripId)의 기본 정보를 부분 수정하고, 수정된 상세 정보를 반환한다.
+     * 요청에 포함된(null 이 아닌) 필드만 변경하고 나머지는 기존 값을 유지한다.
+     * 1. 여행 존재 여부와 요청자가 방장인지 확인한다.
+     * 2. 제목은 보낸 경우 공백일 수 없고, 정원은 현재 참여 인원보다 작게 줄일 수 없다.
+     * 3. 시작일 또는 미션 시작 시각이 바뀌면 첫 미션 일시를 "최종 시작일 + 최종 시각"으로 재계산한다.
+     */
+    @Transactional
+    public TripDetailResponse updateTrip(final Long tripId, final TripUpdateRequest request) {
+        // TODO: 로그인 연동 후 인증된 사용자(member_id)로 교체. 로그인 연동 전까지는 요청으로 방장 회원 ID 를 받는다.
+
+        // 1. 현재 여행 조회 (존재 확인 + 방장 확인 + 미변경 필드의 기존 값 확보)
+        final TripDetailResponse current = tripMapper.selectTrip(tripId);
+        if (current == null) {
+            throw new CommonException(ErrorCode.NOT_FOUND_TRIP);
+        }
+        if (!current.getOwnerMemberId().equals(request.getRequestMemberId())) {
+            throw new CommonException(ErrorCode.NOT_TRIP_OWNER);
+        }
+
+        // 2. 보낸 필드만 값 검증
+        if (request.getTitle() != null && request.getTitle().isBlank()) {
+            throw new CommonException(ErrorCode.INVALID_ARGUMENT);
+        }
+        if (request.getMemberLimit() != null && request.getMemberLimit() < current.getJoinedMemberCount()) {
+            throw new CommonException(ErrorCode.TRIP_MEMBER_LIMIT_BELOW_JOINED);
+        }
+
+        // 수정할 필드가 하나도 없으면 변경 없이 현재 상세 정보를 반환
+        final boolean hasUpdates = request.getTitle() != null || request.getStartDate() != null
+                || request.getEndDate() != null || request.getMemberLimit() != null
+                || request.getMissionMin() != null || request.getMissionMax() != null
+                || request.getMissionStartTime() != null;
+        if (!hasUpdates) {
+            return current;
+        }
+
+        // 3. 시작일 또는 미션 시작 시각이 바뀌면 첫 미션 일시 재계산 (바뀌지 않은 쪽은 기존 값 사용)
+        LocalDateTime missionStartAt = null;
+        if (request.getStartDate() != null || request.getMissionStartTime() != null) {
+            final LocalDate startDate =
+                    request.getStartDate() != null ? request.getStartDate() : current.getStartDate();
+            final LocalTime missionStartTime = request.getMissionStartTime() != null
+                    ? request.getMissionStartTime()
+                    : (current.getMissionStartAt() != null ? current.getMissionStartAt().toLocalTime() : null);
+            if (missionStartTime != null) {
+                missionStartAt = LocalDateTime.of(startDate, missionStartTime);
+            }
+        }
+
+        final TripUpdateParam param = TripUpdateParam.builder()
+                .tripId(tripId)
+                .title(request.getTitle())
+                .startDate(request.getStartDate())
+                .endDate(request.getEndDate())
+                .memberLimit(request.getMemberLimit())
+                .missionMin(request.getMissionMin())
+                .missionMax(request.getMissionMax())
+                .missionStartAt(missionStartAt)
+                .build();
+
+        tripMapper.updateTrip(param);
+
+        return tripMapper.selectTrip(tripId);
     }
 
     /**

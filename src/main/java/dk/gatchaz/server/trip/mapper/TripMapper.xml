@@ -258,6 +258,38 @@
             AND status = 'CREATED'
     </update>
 
+    <!-- null 인 필드는 SET 에서 제외되어 기존 값이 유지된다. updated_at 은 항상 갱신되므로 빈 SET 절은 생기지 않는다 -->
+    <update id="updateTrip">
+        UPDATE
+            trip
+        <set>
+            <if test="title != null">
+                title = #{title},
+            </if>
+            <if test="startDate != null">
+                start_date = #{startDate},
+            </if>
+            <if test="endDate != null">
+                end_date = #{endDate},
+            </if>
+            <if test="memberLimit != null">
+                member_limit = #{memberLimit},
+            </if>
+            <if test="missionMin != null">
+                mission_min = #{missionMin},
+            </if>
+            <if test="missionMax != null">
+                mission_max = #{missionMax},
+            </if>
+            <if test="missionStartAt != null">
+                mission_start_at = #{missionStartAt},
+            </if>
+            updated_at = NOW()
+        </set>
+        WHERE
+            trip_id = #{tripId}
+    </update>
+
     <update id="updateTripRegion">
         UPDATE
             trip

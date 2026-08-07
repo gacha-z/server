@@ -13,6 +13,7 @@ import dk.gatchaz.server.trip.dto.TripRegionDto;
 import dk.gatchaz.server.trip.dto.TripRegionSelectRequest;
 import dk.gatchaz.server.trip.dto.TripRerollRequest;
 import dk.gatchaz.server.trip.dto.TripSearchRequest;
+import dk.gatchaz.server.trip.dto.TripUpdateRequest;
 import dk.gatchaz.server.trip.service.TripService;
 import dk.gatchaz.server.type.ETripStatus;
 import io.swagger.v3.oas.annotations.Operation;
@@ -114,6 +115,37 @@ public class TripController {
     public ResponseDto<TripDetailResponse> getTrip(
             @Parameter(description = "조회할 여행 ID", example = "1") @PathVariable final Long tripId) {
         return ResponseDto.ok(tripService.getTrip(tripId));
+    }
+
+    /**
+     * 여행 정보 수정 (방장 전용, 부분 수정)
+     */
+    @Operation(
+            summary = "여행 정보 수정",
+            description = """
+                    방장(여행 생성자)이 여행의 기본 정보를 부분 수정한다. **body 에 포함한 필드만 변경**되고,
+                    보내지 않은 필드는 기존 값이 유지된다. 수정된 여행 상세 정보를 반환한다.
+
+                    ### 수정 방식 (부분 수정)
+                    - 수정 가능 필드: `title`, `startDate`, `endDate`, `memberLimit`, `missionMin`, `missionMax`, `missionStartTime`
+                      → 바꾸고 싶은 필드만 담아 보낸다. (`requestMemberId` 는 항상 필수)
+                    - 첫 미션 일시는 시작일·미션 시작 시각 중 하나라도 바뀌면 **최종 startDate + 최종 missionStartTime** 으로 재계산된다.
+                      (예: `startDate` 만 보내면 기존 시각을 유지한 채 첫 미션 날짜만 새 시작일로 이동)
+                    - 수정할 필드를 하나도 보내지 않으면 아무것도 변경하지 않고 현재 상세 정보를 반환한다.
+                    - 지역·상태·방장·초대 코드는 이 API 로 수정할 수 없다.
+                      (각각 지역 선택 / 여행 취소 / 방장 위임 API 를 사용한다)
+
+                    ### 실패 응답
+                    - 여행이 없으면 **404** (NOT_FOUND_TRIP)
+                    - 요청자(`requestMemberId`)가 방장이 아니면 **403** (NOT_TRIP_OWNER)
+                    - `memberLimit` 을 현재 참여 인원보다 작게 보내면 **400** (TRIP_MEMBER_LIMIT_BELOW_JOINED)
+                    - `title` 을 공백으로 보내거나 `requestMemberId` 누락 등 형식 오류는 **400** (INVALID_ARGUMENT)
+                    """)
+    @PatchMapping("/{tripId}")
+    public ResponseDto<TripDetailResponse> updateTrip(
+            @Parameter(description = "수정할 여행 ID", example = "1") @PathVariable final Long tripId,
+            @Valid @RequestBody final TripUpdateRequest request) {
+        return ResponseDto.ok(tripService.updateTrip(tripId, request));
     }
 
     /**

@@ -73,6 +73,7 @@ public enum ErrorCode {
     LAST_TRIP_MEMBER_CANNOT_LEAVE(40013, HttpStatus.BAD_REQUEST, "마지막 참여자는 여행에서 나갈 수 없습니다. 여행 취소를 이용해 주세요."),
     TRIP_NOT_CANCELLABLE(40014, HttpStatus.BAD_REQUEST, "취소할 수 없는 상태의 여행입니다."),
     ALREADY_TRIP_OWNER(40015, HttpStatus.BAD_REQUEST, "해당 팀원이 이미 여행 생성자(방장)입니다."),
+    TRIP_MEMBER_LIMIT_BELOW_JOINED(40016, HttpStatus.BAD_REQUEST, "여행 정원은 현재 참여 인원보다 작을 수 없습니다."),
 
     // 일기 관련 에러 코드
     NOT_FOUND_DIARY(40406, HttpStatus.NOT_FOUND, "해당 일기가 존재하지 않습니다."),

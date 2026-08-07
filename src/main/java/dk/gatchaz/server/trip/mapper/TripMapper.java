@@ -7,6 +7,7 @@ import dk.gatchaz.server.trip.dto.TripMemberResponse;
 import dk.gatchaz.server.trip.dto.TripRegionDto;
 import dk.gatchaz.server.trip.dto.TripSearchParam;
 import dk.gatchaz.server.trip.dto.TripSummaryResponse;
+import dk.gatchaz.server.trip.dto.TripUpdateParam;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -80,6 +81,12 @@ public interface TripMapper {
      * 생성(CREATED) 상태가 아니면 0 을 반환한다.
      */
     int cancelTrip(@Param("tripId") Long tripId);
+
+    /**
+     * 여행(tripId)의 기본 정보(제목/기간/정원/미션 설정)를 부분 수정한다. null 인 필드는 기존 값을 유지한다.
+     * 지역(trip_region_id), 상태(status), 방장(owner_member_id), 초대 코드는 각 전용 API 에서만 변경한다.
+     */
+    int updateTrip(TripUpdateParam param);
 
     /**
      * 화면 입력값과 생성자(owner), 상태로 trip 을 새로 생성한다. (trip_region_id 는 지역 선택 전이므로 NULL)
