@@ -67,6 +67,18 @@ public enum ErrorCode {
     TRIP_NOT_JOINABLE(40011, HttpStatus.BAD_REQUEST, "현재 참여할 수 없는 여행입니다."),
     ALREADY_JOINED_TRIP(40902, HttpStatus.CONFLICT, "이미 참여한 여행입니다."),
     TRIP_FULL(40903, HttpStatus.CONFLICT, "여행 정원이 가득 찼습니다."),
+    NOT_TRIP_OWNER(40301, HttpStatus.FORBIDDEN, "여행 생성자(방장)만 수행할 수 있습니다."),
+    CANNOT_KICK_TRIP_OWNER(40012, HttpStatus.BAD_REQUEST, "여행 생성자(방장)는 강퇴할 수 없습니다."),
+    NOT_FOUND_TRIP_MEMBER(40407, HttpStatus.NOT_FOUND, "해당 여행에 참여 중인 팀원이 아닙니다."),
+    LAST_TRIP_MEMBER_CANNOT_LEAVE(40013, HttpStatus.BAD_REQUEST, "마지막 참여자는 여행에서 나갈 수 없습니다. 여행 취소를 이용해 주세요."),
+    TRIP_NOT_CANCELLABLE(40014, HttpStatus.BAD_REQUEST, "취소할 수 없는 상태의 여행입니다."),
+    ALREADY_TRIP_OWNER(40015, HttpStatus.BAD_REQUEST, "해당 팀원이 이미 여행 생성자(방장)입니다."),
+    TRIP_MEMBER_LIMIT_BELOW_JOINED(40016, HttpStatus.BAD_REQUEST, "여행 정원은 현재 참여 인원보다 작을 수 없습니다."),
+
+    // 일기 관련 에러 코드
+    NOT_FOUND_DIARY(40406, HttpStatus.NOT_FOUND, "해당 일기가 존재하지 않습니다."),
+    AI_GENERATION_FAILED(50301, HttpStatus.SERVICE_UNAVAILABLE, "AI 일기 생성에 실패했습니다. 잠시 후 다시 시도해 주세요."),
+    ALREADY_EXISTS_DIARY_DATE(40904, HttpStatus.CONFLICT, "해당 날짜에 이미 작성한 일기가 있습니다."),
 
     ;
 

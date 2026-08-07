@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dk.gatchaz.server.diary.mapper.DiaryMapper">
+
+    <insert id="insertDiary" useGeneratedKeys="true" keyProperty="diaryId" keyColumn="diary_id">
+        INSERT INTO
+            diary(
+                trip_id,
+                member_id,
+                content,
+                diary_date,
+                visibility,
+                status,
+                is_ai_generated,
+                created_at
+            )
+        VALUES
+            (
+                #{tripId},
+                #{memberId},
+                #{content},
+                #{diaryDate},
+                #{visibility},
+                'ACTIVE',
+                #{isAiGenerated},
+                NOW()
+            )
+    </insert>
+
+    <select id="selectDiary" resultType="dk.gatchaz.server.diary.dto.DiaryDetailResponse">
+        SELECT
+            d.diary_id,
+            d.trip_id,
+            d.member_id,
+            d.content,
+            d.diary_date,
+            d.visibility,
+            d.status,
+            d.is_ai_generated,
+            d.created_at,
+            d.updated_at
+        FROM diary d
+        WHERE d.diary_id = #{diaryId}
+          AND (d.status IS NULL OR d.status != 'DELETED')
+    </select>
+
+    <select id="countActiveDiaryByMemberAndDate" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM diary
+        WHERE member_id = #{memberId}
+          AND diary_date = #{diaryDate}
+          AND (status IS NULL OR status != 'DELETED')
+    </select>
+
+    <select id="selectDiaries" resultType="dk.gatchaz.server.diary.dto.DiaryDetailResponse">
+        SELECT
+            d.diary_id,
+            d.trip_id,
+            d.member_id,
+            d.content,
+            d.diary_date,
+            d.visibility,
+            d.status,
+            d.is_ai_generated,
+            d.created_at,
+            d.updated_at
+        FROM diary d
+        <where>
+            AND (d.status IS NULL OR d.status != 'DELETED')
+            <if test="memberId != null">
+                AND d.member_id = #{memberId}
+            </if>
+            <if test="tripId != null">
+                AND d.trip_id = #{tripId}
+            </if>
+            <if test="diaryDate != null">
+                AND d.diary_date = #{diaryDate}
+            </if>
+            <if test="cursor != null">
+                AND d.diary_id &lt; #{cursor}
+            </if>
+        </where>
+        ORDER BY d.diary_id DESC
+        LIMIT #{size}
+    </select>
+
+    <update id="updateDiary">
+        UPDATE
+            diary
+        SET
+            content = #{content},
+            visibility = #{visibility},
+            updated_at = NOW()
+        WHERE
+            diary_id = #{diaryId}
+            AND (status IS NULL OR status != 'DELETED')
+    </update>
+
+    <update id="softDeleteDiary">
+        UPDATE
+            diary
+        SET
+            status = 'DELETED',
+            updated_at = NOW()
+        WHERE
+            diary_id = #{diaryId}
+            AND (status IS NULL OR status != 'DELETED')
+    </update>
+
+    <select id="selectTripContext" resultType="dk.gatchaz.server.diary.dto.DiaryTripContext">
+        SELECT
+            t.title,
+            tr.trip_region_name AS region_name,
+            t.start_date,
+            t.end_date
+        FROM trip t
+        LEFT JOIN trip_region tr
+            ON tr.trip_region_id = t.trip_region_id
+        WHERE t.trip_id = #{tripId}
+    </select>
+
+    <insert id="insertDiaryAiGeneration">
+        INSERT INTO
+            diary_ai_generation(
+                diary_id,
+                source_content,
+                generated_content,
+                selected_yn,
+                created_at
+            )
+        VALUES
+            (
+                #{diaryId},
+                #{sourceContent},
+                #{generatedContent},
+                'Y',
+                NOW()
+            )
+    </insert>
+
+</mapper>

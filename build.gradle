@@ -22,6 +22,13 @@ repositories {
     mavenCentral()
 }
 
+dependencyManagement {
+    imports {
+        // Spring AI BOM (스타터 버전 관리). Spring Boot 3.4.x 호환 버전.
+        mavenBom "org.springframework.ai:spring-ai-bom:1.0.0"
+    }
+}
+
 sourceSets {
     main {
         resources {
@@ -69,6 +76,9 @@ dependencies {
 
     /** P6Spy - 실행 SQL을 파라미터가 채워진(복붙 가능) 형태로 로깅 **/
     implementation 'com.github.gavlyukovskiy:p6spy-spring-boot-starter:1.10.0'
+
+    /** Spring AI - OpenAI 호환 스타터. 무료 티어 Groq 사용(base-url 로 지정). base-url/model 만 바꾸면 OpenAI/로컬 Ollama 등으로 교체 가능 **/
+    implementation 'org.springframework.ai:spring-ai-starter-model-openai'
 
     /** Development tools **/
     developmentOnly 'org.springframework.boot:spring-boot-devtools'

@@ -14,6 +14,7 @@ public class TripRegionDto {
     private Long tripRegionId;
     private String tripRegionCode;
     private String tripRegionName;
+    private String imageUrl;
     private BigDecimal latitude;
     private BigDecimal longitude;
     private String useYn;
