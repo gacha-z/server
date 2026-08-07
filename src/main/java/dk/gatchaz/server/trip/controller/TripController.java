@@ -3,6 +3,7 @@ package dk.gatchaz.server.trip.controller;
 import dk.gatchaz.server.dto.ResponseDto;
 import dk.gatchaz.server.trip.dto.TripCreateRequest;
 import dk.gatchaz.server.trip.dto.TripCreateResponse;
+import dk.gatchaz.server.trip.dto.TripDetailResponse;
 import dk.gatchaz.server.trip.dto.TripInviteCodeResponse;
 import dk.gatchaz.server.trip.dto.TripJoinRequest;
 import dk.gatchaz.server.trip.dto.TripJoinResponse;
@@ -91,6 +92,26 @@ public class TripController {
         final TripSearchRequest request =
                 new TripSearchRequest(title, tripRegionId, status, dateFrom, dateTo, cursor, size, memberId);
         return ResponseDto.ok(tripService.getTrips(request));
+    }
+
+    /**
+     * 여행 상세 조회
+     */
+    @Operation(
+            summary = "여행 상세 조회",
+            description = """
+                    여행 ID로 단건의 상세 정보를 조회한다. 없는 여행이면 404 를 반환한다.
+
+                    - 여행 기본 정보(이름/기간/정원/상태)와 미션 설정(하루 최소·최대 미션 수, 첫 미션 시작 일시)을 반환한다.
+                    - `joinedMemberCount` 는 현재 참여(JOINED) 중인 인원 수이다.
+                    - 지역이 확정된 여행이면 지역 정보(`tripRegionId`, `tripRegionName`, `tripRegionImageUrl`)가 채워지고,
+                      아직 지역을 선택하지 않았으면 셋 다 null 이다.
+                    - 초대 코드는 이 응답에 포함되지 않으며, 별도 API(`GET /api/v1/trips/{tripId}/invite-code`)로 조회한다.
+                    """)
+    @GetMapping("/{tripId}")
+    public ResponseDto<TripDetailResponse> getTrip(
+            @Parameter(description = "조회할 여행 ID", example = "1") @PathVariable final Long tripId) {
+        return ResponseDto.ok(tripService.getTrip(tripId));
     }
 
     /**

@@ -129,6 +129,35 @@
         LIMIT #{size}
     </select>
 
+    <select id="selectTrip" resultType="dk.gatchaz.server.trip.dto.TripDetailResponse">
+        SELECT
+            t.trip_id,
+            t.title,
+            t.start_date,
+            t.end_date,
+            t.status,
+            t.member_limit,
+            (
+                SELECT COUNT(*)
+                FROM member_rel_trip mrt
+                WHERE mrt.trip_id = t.trip_id
+                  AND mrt.status = 'JOINED'
+            ) AS joined_member_count,
+            t.mission_min,
+            t.mission_max,
+            t.mission_start_at,
+            t.owner_member_id,
+            t.trip_region_id,
+            tr.trip_region_name,
+            tr.image_url AS trip_region_image_url,
+            t.created_at,
+            t.updated_at
+        FROM trip t
+        LEFT JOIN trip_region tr
+            ON tr.trip_region_id = t.trip_region_id
+        WHERE t.trip_id = #{tripId}
+    </select>
+
     <update id="updateTripRegion">
         UPDATE
             trip

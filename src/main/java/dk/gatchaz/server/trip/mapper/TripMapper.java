@@ -1,6 +1,7 @@
 package dk.gatchaz.server.trip.mapper;
 
 import dk.gatchaz.server.trip.dto.TripCreateParam;
+import dk.gatchaz.server.trip.dto.TripDetailResponse;
 import dk.gatchaz.server.trip.dto.TripJoinInfo;
 import dk.gatchaz.server.trip.dto.TripRegionDto;
 import dk.gatchaz.server.trip.dto.TripSearchParam;
@@ -19,6 +20,11 @@ public interface TripMapper {
      * hasNext 판별을 위해 서비스에서 요청 개수 + 1 을 size 로 넘긴다.
      */
     List<TripSummaryResponse> selectTrips(TripSearchParam param);
+
+    /**
+     * 여행(tripId) 단건의 상세 정보(기본 정보 + 미션 설정 + 지역 + 참여 인원 수)를 조회한다. 없으면 null.
+     */
+    TripDetailResponse selectTrip(@Param("tripId") Long tripId);
 
     /**
      * 화면 입력값과 생성자(owner), 상태로 trip 을 새로 생성한다. (trip_region_id 는 지역 선택 전이므로 NULL)

@@ -5,6 +5,7 @@ import dk.gatchaz.server.exception.ErrorCode;
 import dk.gatchaz.server.trip.dto.TripCreateParam;
 import dk.gatchaz.server.trip.dto.TripCreateRequest;
 import dk.gatchaz.server.trip.dto.TripCreateResponse;
+import dk.gatchaz.server.trip.dto.TripDetailResponse;
 import dk.gatchaz.server.trip.dto.TripInviteCodeResponse;
 import dk.gatchaz.server.trip.dto.TripJoinInfo;
 import dk.gatchaz.server.trip.dto.TripJoinResponse;
@@ -102,6 +103,18 @@ public class TripService {
         final Long nextCursor = hasNext ? pageTrips.get(pageTrips.size() - 1).getTripId() : null;
 
         return new TripListResponse(pageTrips, nextCursor, hasNext);
+    }
+
+    /**
+     * 여행(tripId) 단건의 상세 정보를 조회한다. 없으면 예외를 던진다.
+     */
+    @Transactional(readOnly = true)
+    public TripDetailResponse getTrip(final Long tripId) {
+        final TripDetailResponse trip = tripMapper.selectTrip(tripId);
+        if (trip == null) {
+            throw new CommonException(ErrorCode.NOT_FOUND_TRIP);
+        }
+        return trip;
     }
 
     /**
