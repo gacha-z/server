@@ -12,6 +12,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.servlet.NoHandlerFoundException;
@@ -60,6 +61,12 @@ public class GlobalExceptionHandler {
     public ResponseDto<?> handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
         log.error("Handler in MethodArgumentNotValidException Error Message = " + e.getMessage());
         return ResponseDto.fail(new CommonException(ErrorCode.INVALID_ARGUMENT));
+    }
+
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseDto<?> handleHandlerMethodValidationException(HandlerMethodValidationException e) {
+        log.error("Handler in HandlerMethodValidationException Error Message = " + e.getMessage());
+        return ResponseDto.fail(e);
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
