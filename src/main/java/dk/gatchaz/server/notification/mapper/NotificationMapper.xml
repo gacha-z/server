@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dk.gatchaz.server.notification.mapper.NotificationMapper">
+
+    <select id="selectDeviceIdByFcmToken" resultType="java.lang.Long">
+        SELECT
+            device_id
+        FROM device
+        <where>
+            AND fcm_token = #{fcmToken}
+        </where>
+        ORDER BY device_id DESC
+        LIMIT 1
+    </select>
+
+    <insert id="insertDevice" useGeneratedKeys="true" keyProperty="deviceId" keyColumn="device_id">
+        INSERT INTO
+            device(
+                member_id,
+                fcm_token,
+                os_type,
+                app_version,
+                notification_enabled,
+                last_active_at,
+                created_at,
+                updated_at
+            )
+        VALUES
+            (
+                #{memberId},
+                #{fcmToken},
+                #{osType},
+                #{appVersion},
+                #{notificationEnabled},
+                NOW(),
+                NOW(),
+                NOW()
+            )
+    </insert>
+
+    <update id="updateDevice">
+        UPDATE
+            device
+        SET
+            member_id = #{memberId},
+            os_type = #{osType},
+            app_version = #{appVersion},
+            notification_enabled = #{notificationEnabled},
+            last_active_at = NOW(),
+            updated_at = NOW()
+        WHERE
+            device_id = #{deviceId}
+    </update>
+
+    <select id="selectNotifications" resultType="dk.gatchaz.server.notification.dto.NotificationResponse">
+        SELECT
+            n.notification_id,
+            n.type,
+            n.title,
+            n.body,
+            n.target_type,
+            n.target_id,
+            <!-- read 는 MySQL 예약어라 별칭에 백틱을 쓴다. 'Y'/'N' 을 boolean 으로 내려준다. -->
+            CASE WHEN n.read_yn = 'Y' THEN 1 ELSE 0 END AS `read`,
+            n.created_at
+        FROM notification n
+        <where>
+            AND n.member_id = #{memberId}
+            <if test="cursor != null">
+                AND n.notification_id &lt; #{cursor}
+            </if>
+        </where>
+        ORDER BY n.notification_id DESC
+        LIMIT #{size}
+    </select>
+
+    <select id="countUnreadNotifications" resultType="java.lang.Integer">
+        SELECT
+            COUNT(*)
+        FROM notification
+        <where>
+            AND member_id = #{memberId}
+            AND read_yn = 'N'
+        </where>
+    </select>
+
+    <update id="markNotificationRead">
+        UPDATE
+            notification
+        SET
+            read_yn = 'Y'
+        <where>
+            AND notification_id = #{notificationId}
+            AND member_id = #{memberId}
+            AND read_yn = 'N'
+        </where>
+    </update>
+
+    <insert id="insertNotification" useGeneratedKeys="true" keyProperty="notificationId" keyColumn="notification_id">
+        INSERT INTO
+            notification(
+                member_id,
+                type,
+                title,
+                body,
+                target_type,
+                target_id,
+                read_yn,
+                created_at
+            )
+        VALUES
+            (
+                #{memberId},
+                #{type},
+                #{title},
+                #{body},
+                #{targetType},
+                #{targetId},
+                'N',
+                NOW()
+            )
+    </insert>
+
+    <select id="selectSendableDevices" resultType="dk.gatchaz.server.notification.dto.DeviceTokenDto">
+        SELECT
+            device_id,
+            member_id,
+            fcm_token
+        FROM device
+        <where>
+            AND member_id IN
+            <foreach collection="memberIds" item="memberId" open="(" separator="," close=")">
+                #{memberId}
+            </foreach>
+            AND notification_enabled = 'Y'
+            AND fcm_token IS NOT NULL
+            AND fcm_token &lt;&gt; ''
+        </where>
+    </select>
+
+    <insert id="insertNotificationSendLogs">
+        INSERT INTO
+            notification_send_log(
+                notification_id,
+                device_id,
+                send_status,
+                error_message,
+                created_at
+            )
+        VALUES
+        <foreach collection="logs" item="log" separator=",">
+            (
+                #{log.notificationId},
+                #{log.deviceId},
+                #{log.sendStatus},
+                #{log.errorMessage},
+                NOW()
+            )
+        </foreach>
+    </insert>
+
+    <select id="selectDiaryNotificationContext"
+            resultType="dk.gatchaz.server.notification.dto.DiaryNotificationContext">
+        SELECT
+            t.title AS trip_title,
+            m.nickname AS writer_nickname
+        FROM diary d
+        INNER JOIN trip t
+            ON t.trip_id = d.trip_id
+        LEFT JOIN member m
+            ON m.member_id = d.member_id
+        <where>
+            AND d.diary_id = #{diaryId}
+        </where>
+    </select>
+
+    <select id="selectDiaryReminderTargets" resultType="dk.gatchaz.server.notification.dto.DiaryReminderTarget">
+        SELECT
+            x.member_id,
+            x.trip_id,
+            t.title AS trip_title
+        FROM (
+            <!-- 일기는 회원 기준 하루 1개라, 여러 여행에 참여 중이어도 여행 1개만 골라 알림 중복을 막는다. -->
+            SELECT
+                mrt.member_id AS member_id,
+                MIN(tr.trip_id) AS trip_id
+            FROM trip tr
+            INNER JOIN member_rel_trip mrt
+                ON mrt.trip_id = tr.trip_id
+                AND mrt.status = 'JOINED'
+            <!-- 오늘 쓴 일기가 있으면(= 조인되면) 대상에서 뺀다. -->
+            LEFT JOIN diary d
+                ON d.member_id = mrt.member_id
+                AND d.diary_date = CURDATE()
+                AND (d.status IS NULL OR d.status &lt;&gt; 'DELETED')
+            <!-- 오늘 이미 독려 알림을 받았으면 뺀다. (배치가 두 번 실행돼도 중복 발송되지 않게) -->
+            LEFT JOIN notification n
+                ON n.member_id = mrt.member_id
+                AND n.type = 'DIARY_WRITE_REMINDER'
+                AND n.created_at &gt;= CURDATE()
+            <where>
+                AND tr.status NOT IN ('CANCELLED', 'COMPLETED')
+                <!-- start_date/end_date 가 datetime 이라 시각까지 비교하면 여행 첫날이 빠질 수 있어 날짜로 맞춘다. -->
+                AND CURDATE() BETWEEN DATE(tr.start_date) AND DATE(tr.end_date)
+                AND d.diary_id IS NULL
+                AND n.notification_id IS NULL
+            </where>
+            GROUP BY mrt.member_id
+        ) x
+        INNER JOIN trip t
+            ON t.trip_id = x.trip_id
+        ORDER BY x.member_id
+    </select>
+
+    <select id="selectJoinedMemberIdsExcept" resultType="java.lang.Long">
+        SELECT
+            member_id
+        FROM member_rel_trip
+        <where>
+            AND trip_id = #{tripId}
+            AND status = 'JOINED'
+            AND member_id &lt;&gt; #{exceptMemberId}
+        </where>
+        ORDER BY member_id
+    </select>
+
+</mapper>
