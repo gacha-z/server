@@ -57,6 +57,8 @@ public enum ErrorCode {
     ILLEGAL_STATE(50003, HttpStatus.INTERNAL_SERVER_ERROR, "잘못된 상태입니다."),
     RUNTIME_EXCEPTION(50004, HttpStatus.INTERNAL_SERVER_ERROR, "서버 오류입니다."),
     EXTERNAL_API_ERROR(50300, HttpStatus.SERVICE_UNAVAILABLE, "외부 API 요청에 실패하였습니다."),
+    EXTERNAL_API_RATE_LIMITED(50302, HttpStatus.SERVICE_UNAVAILABLE, "외부 API 초당 요청 제한을 초과하였습니다."),
+    EXTERNAL_API_QUOTA_EXCEEDED(50303, HttpStatus.SERVICE_UNAVAILABLE, "외부 API 일일 요청 한도를 초과하였습니다."),
 
     // 여행 관련 에러 코드
     REROLL_NOT_AVAILABLE(50100, HttpStatus.CONFLICT, "더 이상 리롤할 수 없습니다."),

@@ -14,8 +14,10 @@ import dk.gatchaz.server.diary.mapper.DiaryMapper;
 import dk.gatchaz.server.diary.support.DiaryContentGenerator;
 import dk.gatchaz.server.exception.CommonException;
 import dk.gatchaz.server.exception.ErrorCode;
+import dk.gatchaz.server.notification.event.DiaryCreatedEvent;
 import dk.gatchaz.server.type.EDiaryVisibility;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +29,7 @@ public class DiaryService {
 
     private final DiaryMapper diaryMapper;
     private final DiaryContentGenerator diaryContentGenerator;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 일기를 저장한다. (본문 생성 로직 없음 — AI 생성은 generateDiary(/generate) 담당)
@@ -42,8 +45,9 @@ public class DiaryService {
             throw new CommonException(ErrorCode.ALREADY_EXISTS_DIARY_DATE);
         }
 
-        final String visibility =
-                (request.getVisibility() == null ? EDiaryVisibility.TEAM : request.getVisibility()).name();
+        final EDiaryVisibility diaryVisibility =
+                request.getVisibility() == null ? EDiaryVisibility.TEAM : request.getVisibility();
+        final String visibility = diaryVisibility.name();
         final String isAiGenerated = Boolean.TRUE.equals(request.getIsAiGenerated()) ? "Y" : "N";
 
         final DiaryCreateParam param = DiaryCreateParam.builder()
@@ -62,6 +66,11 @@ public class DiaryService {
             diaryMapper.insertDiaryAiGeneration(
                     param.getDiaryId(), request.getSourceContent(), request.getContent());
         }
+
+        // 같은 여행 팀원에게 알림을 보내기 위한 이벤트. 이 트랜잭션이 커밋된 뒤 별도 스레드에서 처리된다.
+        // (저장이 롤백되면 알림도 나가지 않고, 알림 발송이 이 API 응답을 늦추지 않는다)
+        eventPublisher.publishEvent(new DiaryCreatedEvent(
+                param.getDiaryId(), request.getTripId(), request.getMemberId(), diaryVisibility));
 
         return diaryMapper.selectDiary(param.getDiaryId());
     }
