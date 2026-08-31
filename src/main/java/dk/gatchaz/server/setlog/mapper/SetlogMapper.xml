@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dk.gatchaz.server.setlog.mapper.SetlogMapper">
+
+    <select id="existsInProgressTripMission" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM trip_mission
+        WHERE trip_id = #{tripId}
+          AND trip_mission_id = #{tripMissionId}
+          AND status = 'IN_PROGRESS'
+    </select>
+
+    <select id="existsJoinedMember" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM member_rel_trip
+        WHERE trip_id = #{tripId}
+          AND member_id = #{memberId}
+          AND status = 'JOINED'
+    </select>
+
+    <select id="existsSetlogByMember" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM setlog
+        WHERE trip_mission_id = #{tripMissionId}
+          AND member_id = #{memberId}
+          AND deleted_at IS NULL
+    </select>
+
+    <select id="countSetlogsForMission" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM setlog
+        WHERE trip_mission_id = #{tripMissionId}
+          AND deleted_at IS NULL
+    </select>
+
+    <insert id="insertSetlog" useGeneratedKeys="true" keyProperty="setlogId" keyColumn="setlog_id">
+        INSERT INTO
+            setlog(
+                trip_id,
+                trip_mission_id,
+                member_id,
+                file_url,
+                status,
+                slot_no,
+                created_at
+            )
+        VALUES
+            (
+                #{tripId},
+                #{tripMissionId},
+                #{memberId},
+                #{fileUrl},
+                #{status},
+                #{slotNo},
+                NOW()
+            )
+    </insert>
+
+    <select id="selectSetlogsByTrip" resultType="dk.gatchaz.server.setlog.dto.SetlogResponse">
+        SELECT
+            s.setlog_id,
+            s.trip_id,
+            s.trip_mission_id,
+            s.member_id,
+            m.nickname AS member_nickname,
+            s.file_url,
+            s.slot_no,
+            s.created_at
+        FROM setlog s
+        INNER JOIN member m
+            ON m.member_id = s.member_id
+        WHERE s.trip_id = #{tripId}
+          AND s.deleted_at IS NULL
+        ORDER BY s.trip_mission_id ASC, s.slot_no ASC
+    </select>
+
+    <select id="selectSetlogsByMission" resultType="dk.gatchaz.server.setlog.dto.SetlogResponse">
+        SELECT
+            s.setlog_id,
+            s.trip_id,
+            s.trip_mission_id,
+            s.member_id,
+            m.nickname AS member_nickname,
+            s.file_url,
+            s.slot_no,
+            s.created_at
+        FROM setlog s
+        INNER JOIN member m
+            ON m.member_id = s.member_id
+        WHERE s.trip_mission_id = #{tripMissionId}
+          AND s.deleted_at IS NULL
+        ORDER BY s.slot_no ASC
+    </select>
+
+    <select id="selectFileUrlById" resultType="java.lang.String">
+        SELECT
+            file_url
+        FROM setlog
+        WHERE setlog_id = #{setlogId}
+          AND deleted_at IS NULL
+    </select>
+
+    <insert id="insertSetlogDownloadLog">
+        INSERT INTO
+            setlog_download_log(
+                setlog_id,
+                member_id,
+                status,
+                created_at
+            )
+        VALUES
+            (
+                #{setlogId},
+                #{memberId},
+                #{status},
+                NOW()
+            )
+    </insert>
+
+</mapper>

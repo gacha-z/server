@@ -26,6 +26,9 @@ dependencyManagement {
     imports {
         // Spring AI BOM (스타터 버전 관리). Spring Boot 3.4.x 호환 버전.
         mavenBom "org.springframework.ai:spring-ai-bom:1.0.0"
+        // AWS SDK v2 BOM (버전 관리). 셋로그 영상 업로드(S3)용.
+        // 빌드 시 이 버전이 존재하지 않는다는 오류가 나면 최신 2.x 버전으로 올려주세요.
+        mavenBom "software.amazon.awssdk:bom:2.29.52"
     }
 }
 
@@ -79,6 +82,9 @@ dependencies {
 
     /** Spring AI - OpenAI 호환 스타터. 무료 티어 Groq 사용(base-url 로 지정). base-url/model 만 바꾸면 OpenAI/로컬 Ollama 등으로 교체 가능 **/
     implementation 'org.springframework.ai:spring-ai-starter-model-openai'
+
+    /** AWS S3 - 셋로그 영상 업로드 **/
+    implementation 'software.amazon.awssdk:s3'
 
     /** Development tools **/
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
