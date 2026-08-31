@@ -1,12 +1,16 @@
-﻿CREATE TABLE `trip` (
+CREATE TABLE `trip` (
 	`trip_id`	BIGINT	NOT NULL,
 	`owner_member_id`	BIGINT	NOT NULL	COMMENT '팀장 id',
-	`travel_region_id`	BIGINT	NOT NULL	COMMENT '선택한 여행지',
+	`trip_region_id`	BIGINT	NULL	COMMENT '선택한 여행지 (지역 선택 전에는 NULL)',
 	`title`	VARCHAR(100)	NULL,
 	`start_date`	DATETIME	NULL,
 	`end_date`	DATETIME	NULL,
 	`member_limit`	INT	NULL	COMMENT '여행 최대 인원',
+	`mission_min`	INT	NULL	COMMENT '하루 최소 미션 수',
+	`mission_max`	INT	NULL	COMMENT '하루 최대 미션 수',
+	`mission_start_at`	DATETIME	NULL	COMMENT '첫 미션 받을 일시',
 	`status`	VARCHAR(30)	NULL	COMMENT '예정/진행/완료',
+	`invite_code`	VARCHAR(100)	NULL	COMMENT '초대 코드 (영구 발급)',
 	`completed_at`	DATETIME	NULL,
 	`cancelled_at`	DATETIME	NULL,
 	`created_at`	DATETIME	NULL,
@@ -96,6 +100,7 @@ CREATE TABLE `diary_ai_generation` (
 CREATE TABLE `mission_reroll_log` (
 	`mission_reroll_log_id`	BIGINT	NOT NULL,
 	`trip_id`	BIGINT	NOT NULL,
+	`assigned_order`	INT	NOT NULL	COMMENT '리롤이 발생한 미션 라운드 (mission_candidate.assigned_order 와 동일 기준)',
 	`member_id`	BIGINT	NOT NULL,
 	`old_mission_id`	BIGINT	NULL,
 	`new_mission_id`	BIGINT	NOT NULL,
@@ -150,7 +155,7 @@ CREATE TABLE `trip_event_log` (
 	`trip_event_log_id`	BIGINT	NOT NULL	COMMENT '여행 이벤트 로그 ID',
 	`trip_id`	BIGINT	NOT NULL,
 	`member_id`	BIGINT	NOT NULL,
-	`travel_region_id`	BIGINT	NOT NULL,
+	`trip_region_id`	BIGINT	NOT NULL,
 	`mission_id`	BIGINT	NOT NULL,
 	`trip_mission_id`	BIGINT	NOT NULL,
 	`event_type`	VARCHAR(50)	NULL	COMMENT '이벤트 유형',
@@ -188,15 +193,17 @@ CREATE TABLE `trip_candidate` (
 	`trip_region_id`	BIGINT	NOT NULL,
 	`reroll_count`	INT	NULL,
 	`selected_yn`	CHAR(1)	NULL	DEFAULT 'N',
+	`use_yn`	CHAR(1)	NULL	DEFAULT 'Y'	COMMENT '리롤 시 기존 후보 비활성화 (Y→N), 이력 보관',
 	`created_at`	DATETIME	NULL
 );
 
 CREATE TABLE `mission_candidate` (
 	`mission_candidate_id`	BIGINT	NOT NULL,
 	`trip_id`	BIGINT	NOT NULL,
+	`assigned_order`	INT	NOT NULL	COMMENT '여행 내 몇 번째 미션 라운드인지 (trip_mission.assigned_order 와 동일 기준)',
 	`mission_id`	BIGINT	NOT NULL,
 	`selected_yn`	CHAR(1)	NOT NULL	DEFAULT 'N',
-	`rerolled_yn`	CHAR(1)	NOT NULL	DEFAULT 'N',
+	`rerolled_yn`	BOOLEAN	NOT NULL	DEFAULT FALSE	COMMENT 'true = 리롤되어 교체된(비활성) 후보. 리롤 시 이 행은 그대로 두고(이력 보존) 새 행을 추가한다',
 	`created_at`	DATETIME	NULL
 );
 
@@ -393,3 +400,76 @@ ALTER TABLE `device_permission` ADD CONSTRAINT `PK_DEVICE_PERMISSION` PRIMARY KE
 	`device_permission_id`
 );
 
+-- =====================================================================
+-- Foreign Key 제약조건
+-- (share.target_type/target_id, notification.target_type/target_id 는
+--  다형성(polymorphic) 참조라 단일 FK로 표현할 수 없어 제외)
+-- =====================================================================
+
+ALTER TABLE `trip` ADD CONSTRAINT `FK_TRIP_OWNER_MEMBER` FOREIGN KEY (`owner_member_id`) REFERENCES `member` (`member_id`);
+ALTER TABLE `trip` ADD CONSTRAINT `FK_TRIP_TRIP_REGION` FOREIGN KEY (`trip_region_id`) REFERENCES `trip_region` (`trip_region_id`);
+
+ALTER TABLE `location_verification_log` ADD CONSTRAINT `FK_LOCATION_VERIFICATION_LOG_TRIP` FOREIGN KEY (`trip_id`) REFERENCES `trip` (`trip_id`);
+ALTER TABLE `location_verification_log` ADD CONSTRAINT `FK_LOCATION_VERIFICATION_LOG_TRIP_MISSION` FOREIGN KEY (`trip_mission_id`) REFERENCES `trip_mission` (`trip_mission_id`);
+ALTER TABLE `location_verification_log` ADD CONSTRAINT `FK_LOCATION_VERIFICATION_LOG_MEMBER` FOREIGN KEY (`member_id`) REFERENCES `member` (`member_id`);
+
+ALTER TABLE `trip_invite` ADD CONSTRAINT `FK_TRIP_INVITE_TRIP` FOREIGN KEY (`trip_id`) REFERENCES `trip` (`trip_id`);
+ALTER TABLE `trip_invite` ADD CONSTRAINT `FK_TRIP_INVITE_CREATED_BY` FOREIGN KEY (`created_by`) REFERENCES `member` (`member_id`);
+
+ALTER TABLE `member_rel_collection_item` ADD CONSTRAINT `FK_MEMBER_REL_COLLECTION_ITEM_MEMBER` FOREIGN KEY (`member_id`) REFERENCES `member` (`member_id`);
+ALTER TABLE `member_rel_collection_item` ADD CONSTRAINT `FK_MEMBER_REL_COLLECTION_ITEM_COLLECTION_ITEM` FOREIGN KEY (`collection_item_id`) REFERENCES `collection_item` (`collection_item_id`);
+ALTER TABLE `member_rel_collection_item` ADD CONSTRAINT `FK_MEMBER_REL_COLLECTION_ITEM_TRIP` FOREIGN KEY (`trip_id`) REFERENCES `trip` (`trip_id`);
+
+ALTER TABLE `setlog` ADD CONSTRAINT `FK_SETLOG_TRIP` FOREIGN KEY (`trip_id`) REFERENCES `trip` (`trip_id`);
+ALTER TABLE `setlog` ADD CONSTRAINT `FK_SETLOG_TRIP_MISSION` FOREIGN KEY (`trip_mission_id`) REFERENCES `trip_mission` (`trip_mission_id`);
+ALTER TABLE `setlog` ADD CONSTRAINT `FK_SETLOG_MEMBER` FOREIGN KEY (`member_id`) REFERENCES `member` (`member_id`);
+
+ALTER TABLE `refresh_token` ADD CONSTRAINT `FK_REFRESH_TOKEN_MEMBER` FOREIGN KEY (`member_id`) REFERENCES `member` (`member_id`);
+
+ALTER TABLE `diary_ai_generation` ADD CONSTRAINT `FK_DIARY_AI_GENERATION_DIARY` FOREIGN KEY (`diary_id`) REFERENCES `diary` (`diary_id`);
+
+ALTER TABLE `mission_reroll_log` ADD CONSTRAINT `FK_MISSION_REROLL_LOG_TRIP` FOREIGN KEY (`trip_id`) REFERENCES `trip` (`trip_id`);
+ALTER TABLE `mission_reroll_log` ADD CONSTRAINT `FK_MISSION_REROLL_LOG_MEMBER` FOREIGN KEY (`member_id`) REFERENCES `member` (`member_id`);
+ALTER TABLE `mission_reroll_log` ADD CONSTRAINT `FK_MISSION_REROLL_LOG_OLD_MISSION` FOREIGN KEY (`old_mission_id`) REFERENCES `mission` (`mission_id`);
+ALTER TABLE `mission_reroll_log` ADD CONSTRAINT `FK_MISSION_REROLL_LOG_NEW_MISSION` FOREIGN KEY (`new_mission_id`) REFERENCES `mission` (`mission_id`);
+
+ALTER TABLE `mission` ADD CONSTRAINT `FK_MISSION_TRIP_REGION` FOREIGN KEY (`region_id`) REFERENCES `trip_region` (`trip_region_id`);
+
+ALTER TABLE `collection_item` ADD CONSTRAINT `FK_COLLECTION_ITEM_TRIP_REGION` FOREIGN KEY (`region_id`) REFERENCES `trip_region` (`trip_region_id`);
+
+ALTER TABLE `device` ADD CONSTRAINT `FK_DEVICE_MEMBER` FOREIGN KEY (`member_id`) REFERENCES `member` (`member_id`);
+
+ALTER TABLE `trip_event_log` ADD CONSTRAINT `FK_TRIP_EVENT_LOG_TRIP` FOREIGN KEY (`trip_id`) REFERENCES `trip` (`trip_id`);
+ALTER TABLE `trip_event_log` ADD CONSTRAINT `FK_TRIP_EVENT_LOG_MEMBER` FOREIGN KEY (`member_id`) REFERENCES `member` (`member_id`);
+ALTER TABLE `trip_event_log` ADD CONSTRAINT `FK_TRIP_EVENT_LOG_TRIP_REGION` FOREIGN KEY (`trip_region_id`) REFERENCES `trip_region` (`trip_region_id`);
+ALTER TABLE `trip_event_log` ADD CONSTRAINT `FK_TRIP_EVENT_LOG_MISSION` FOREIGN KEY (`mission_id`) REFERENCES `mission` (`mission_id`);
+ALTER TABLE `trip_event_log` ADD CONSTRAINT `FK_TRIP_EVENT_LOG_TRIP_MISSION` FOREIGN KEY (`trip_mission_id`) REFERENCES `trip_mission` (`trip_mission_id`);
+
+ALTER TABLE `share` ADD CONSTRAINT `FK_SHARE_MEMBER` FOREIGN KEY (`member_id`) REFERENCES `member` (`member_id`);
+
+ALTER TABLE `trip_candidate` ADD CONSTRAINT `FK_TRIP_CANDIDATE_TRIP` FOREIGN KEY (`trip_id`) REFERENCES `trip` (`trip_id`);
+ALTER TABLE `trip_candidate` ADD CONSTRAINT `FK_TRIP_CANDIDATE_TRIP_REGION` FOREIGN KEY (`trip_region_id`) REFERENCES `trip_region` (`trip_region_id`);
+
+ALTER TABLE `mission_candidate` ADD CONSTRAINT `FK_MISSION_CANDIDATE_TRIP` FOREIGN KEY (`trip_id`) REFERENCES `trip` (`trip_id`);
+ALTER TABLE `mission_candidate` ADD CONSTRAINT `FK_MISSION_CANDIDATE_MISSION` FOREIGN KEY (`mission_id`) REFERENCES `mission` (`mission_id`);
+
+ALTER TABLE `member_rel_trip` ADD CONSTRAINT `FK_MEMBER_REL_TRIP_MEMBER` FOREIGN KEY (`member_id`) REFERENCES `member` (`member_id`);
+ALTER TABLE `member_rel_trip` ADD CONSTRAINT `FK_MEMBER_REL_TRIP_TRIP` FOREIGN KEY (`trip_id`) REFERENCES `trip` (`trip_id`);
+
+ALTER TABLE `notification_send_log` ADD CONSTRAINT `FK_NOTIFICATION_SEND_LOG_NOTIFICATION` FOREIGN KEY (`notification_id`) REFERENCES `notification` (`notification_id`);
+ALTER TABLE `notification_send_log` ADD CONSTRAINT `FK_NOTIFICATION_SEND_LOG_DEVICE` FOREIGN KEY (`device_id`) REFERENCES `device` (`device_id`);
+
+ALTER TABLE `social_account` ADD CONSTRAINT `FK_SOCIAL_ACCOUNT_MEMBER` FOREIGN KEY (`member_id`) REFERENCES `member` (`member_id`);
+
+ALTER TABLE `setlog_download_log` ADD CONSTRAINT `FK_SETLOG_DOWNLOAD_LOG_SETLOG` FOREIGN KEY (`setlog_id`) REFERENCES `setlog` (`setlog_id`);
+ALTER TABLE `setlog_download_log` ADD CONSTRAINT `FK_SETLOG_DOWNLOAD_LOG_MEMBER` FOREIGN KEY (`member_id`) REFERENCES `member` (`member_id`);
+
+ALTER TABLE `trip_mission` ADD CONSTRAINT `FK_TRIP_MISSION_TRIP` FOREIGN KEY (`trip_id`) REFERENCES `trip` (`trip_id`);
+ALTER TABLE `trip_mission` ADD CONSTRAINT `FK_TRIP_MISSION_MISSION` FOREIGN KEY (`mission_id`) REFERENCES `mission` (`mission_id`);
+
+ALTER TABLE `diary` ADD CONSTRAINT `FK_DIARY_TRIP` FOREIGN KEY (`trip_id`) REFERENCES `trip` (`trip_id`);
+ALTER TABLE `diary` ADD CONSTRAINT `FK_DIARY_MEMBER` FOREIGN KEY (`member_id`) REFERENCES `member` (`member_id`);
+
+ALTER TABLE `notification` ADD CONSTRAINT `FK_NOTIFICATION_MEMBER` FOREIGN KEY (`member_id`) REFERENCES `member` (`member_id`);
+
+ALTER TABLE `device_permission` ADD CONSTRAINT `FK_DEVICE_PERMISSION_DEVICE` FOREIGN KEY (`device_id`) REFERENCES `device` (`device_id`);
