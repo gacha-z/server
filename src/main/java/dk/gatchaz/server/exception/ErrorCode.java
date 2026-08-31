@@ -75,6 +75,16 @@ public enum ErrorCode {
     ALREADY_TRIP_OWNER(40015, HttpStatus.BAD_REQUEST, "해당 팀원이 이미 여행 생성자(방장)입니다."),
     TRIP_MEMBER_LIMIT_BELOW_JOINED(40016, HttpStatus.BAD_REQUEST, "여행 정원은 현재 참여 인원보다 작을 수 없습니다."),
 
+    // 미션 관련 에러 코드
+    TRIP_REGION_NOT_SELECTED(40017, HttpStatus.BAD_REQUEST, "아직 여행 지역이 선택되지 않았습니다."),
+    MISSION_NOT_STARTED(40018, HttpStatus.BAD_REQUEST, "아직 미션이 시작되지 않았습니다."),
+    NO_AVAILABLE_MISSION(50102, HttpStatus.BAD_REQUEST, "추천 가능한 미션이 없습니다."),
+    INVALID_MISSION_CANDIDATE_SELECTION(40019, HttpStatus.BAD_REQUEST, "유효하지 않은 미션 후보 선택입니다."),
+    DAILY_MISSION_QUOTA_COMPLETED(40905, HttpStatus.CONFLICT, "오늘 목표 미션 라운드를 모두 완료했습니다."),
+    NOT_FOUND_TRIP_MISSION(40408, HttpStatus.NOT_FOUND, "해당 진행 중인 미션이 존재하지 않습니다."),
+    SETLOG_NOT_COMPLETE(40020, HttpStatus.BAD_REQUEST, "모든 팀원이 셋로그를 촬영해야 미션을 완료할 수 있습니다."),
+    LOCATION_VERIFICATION_FAILED(40021, HttpStatus.BAD_REQUEST, "위치 인증에 실패했습니다. (허용 거리 초과)"),
+
     // 일기 관련 에러 코드
     NOT_FOUND_DIARY(40406, HttpStatus.NOT_FOUND, "해당 일기가 존재하지 않습니다."),
     AI_GENERATION_FAILED(50301, HttpStatus.SERVICE_UNAVAILABLE, "AI 일기 생성에 실패했습니다. 잠시 후 다시 시도해 주세요."),

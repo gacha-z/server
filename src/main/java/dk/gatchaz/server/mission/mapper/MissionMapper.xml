@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dk.gatchaz.server.mission.mapper.MissionMapper">
+
+    <select id="selectTripMissionSettingInfo" resultType="dk.gatchaz.server.mission.dto.TripMissionSettingInfo">
+        SELECT
+            trip_id,
+            trip_region_id,
+            mission_min,
+            mission_max,
+            mission_start_at
+        FROM trip
+        WHERE trip_id = #{tripId}
+    </select>
+
+    <select id="selectDailyGoal" resultType="java.lang.Integer">
+        SELECT
+            target_round_count
+        FROM mission_daily_goal
+        WHERE trip_id = #{tripId}
+          AND day_no = #{dayNo}
+    </select>
+
+    <insert id="insertDailyGoal">
+        INSERT INTO
+            mission_daily_goal(
+                trip_id,
+                day_no,
+                target_round_count,
+                created_at
+            )
+        VALUES
+            (
+                #{tripId},
+                #{dayNo},
+                #{targetRoundCount},
+                NOW()
+            )
+    </insert>
+
+    <select id="countResolvedRounds" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM trip_mission
+        WHERE trip_id = #{tripId}
+          AND day_no = #{dayNo}
+          AND status IN ('COMPLETED', 'FAILED')
+    </select>
+
+    <select id="selectActiveCandidates" resultType="dk.gatchaz.server.mission.dto.MissionCandidateResponse">
+        SELECT
+            mc.mission_candidate_id,
+            m.mission_id,
+            m.mission_type,
+            m.title,
+            m.description,
+            m.difficulty,
+            mc.selected_yn,
+            mc.rerolled_yn
+        FROM mission_candidate mc
+        INNER JOIN mission m
+            ON m.mission_id = mc.mission_id
+        WHERE mc.trip_id = #{tripId}
+          AND mc.day_no = #{dayNo}
+          AND mc.assigned_order = #{assignedOrder}
+          AND mc.rerolled_yn = false
+        ORDER BY mc.mission_candidate_id ASC
+    </select>
+
+    <!-- 이 여행에서 이미 선택(selected_yn='Y')된 미션은 제외. 리롤로 버려진 미션(선택되지 않음)은 다시 나올 수 있다 -->
+    <select id="selectRandomMissionIds" resultType="java.lang.Long">
+        SELECT
+            m.mission_id
+        FROM mission m
+        LEFT JOIN mission_candidate mc
+            ON mc.mission_id = m.mission_id
+            AND mc.trip_id = #{tripId}
+            AND mc.selected_yn = 'Y'
+        <where>
+            AND m.use_yn = 'Y'
+            AND m.region_id = #{tripRegionId}
+            AND mc.mission_candidate_id IS NULL
+        </where>
+        ORDER BY RAND()
+        LIMIT #{cnt}
+    </select>
+
+    <insert id="insertCandidates">
+        INSERT INTO
+            mission_candidate(
+                trip_id,
+                day_no,
+                assigned_order,
+                mission_id,
+                selected_yn,
+                rerolled_yn,
+                created_at
+            )
+        VALUES
+        <foreach collection="missionIds" item="missionId" separator=",">
+            (
+                #{tripId},
+                #{dayNo},
+                #{assignedOrder},
+                #{missionId},
+                'N',
+                false,
+                NOW()
+            )
+        </foreach>
+    </insert>
+
+    <select id="selectCandidateForSelection" resultType="dk.gatchaz.server.mission.dto.MissionCandidateSelectionInfo">
+        SELECT
+            mc.mission_candidate_id,
+            m.mission_id,
+            mc.day_no,
+            mc.assigned_order,
+            m.mission_type,
+            m.title,
+            m.description,
+            m.difficulty
+        FROM mission_candidate mc
+        INNER JOIN mission m
+            ON m.mission_id = mc.mission_id
+        WHERE mc.trip_id = #{tripId}
+          AND mc.mission_candidate_id = #{missionCandidateId}
+          AND mc.selected_yn = 'N'
+          AND mc.rerolled_yn = false
+    </select>
+
+    <update id="markCandidateSelected">
+        UPDATE
+            mission_candidate
+        SET
+            selected_yn = 'Y'
+        WHERE
+            trip_id = #{tripId}
+            AND mission_candidate_id = #{missionCandidateId}
+            AND selected_yn = 'N'
+    </update>
+
+    <insert id="insertTripMission" useGeneratedKeys="true" keyProperty="tripMissionId" keyColumn="trip_mission_id">
+        INSERT INTO
+            trip_mission(
+                trip_id,
+                mission_id,
+                day_no,
+                assigned_order,
+                status,
+                started_at,
+                created_at
+            )
+        VALUES
+            (
+                #{tripId},
+                #{missionId},
+                #{dayNo},
+                #{assignedOrder},
+                #{status},
+                NOW(),
+                NOW()
+            )
+    </insert>
+
+    <select id="existsInProgressTripMission" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM trip_mission
+        WHERE trip_id = #{tripId}
+          AND trip_mission_id = #{tripMissionId}
+          AND status = 'IN_PROGRESS'
+    </select>
+
+    <select id="countJoinedMembers" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM member_rel_trip
+        WHERE trip_id = #{tripId}
+          AND status = 'JOINED'
+    </select>
+
+    <select id="countSetlogMembers" resultType="int">
+        SELECT
+            COUNT(DISTINCT member_id)
+        FROM setlog
+        WHERE trip_mission_id = #{tripMissionId}
+          AND deleted_at IS NULL
+    </select>
+
+    <select id="selectTripRegionCoordinate" resultType="dk.gatchaz.server.mission.dto.TripRegionCoordinate">
+        SELECT
+            tr.latitude,
+            tr.longitude
+        FROM trip t
+        INNER JOIN trip_region tr
+            ON tr.trip_region_id = t.trip_region_id
+        WHERE t.trip_id = #{tripId}
+    </select>
+
+    <insert id="insertLocationVerificationLog">
+        INSERT INTO
+            location_verification_log(
+                trip_id,
+                trip_mission_id,
+                member_id,
+                latitude,
+                longitude,
+                distance_meter,
+                success_yn,
+                created_at
+            )
+        VALUES
+            (
+                #{tripId},
+                #{tripMissionId},
+                #{memberId},
+                #{latitude},
+                #{longitude},
+                #{distanceMeter},
+                #{successYn},
+                NOW()
+            )
+    </insert>
+
+    <update id="completeTripMission">
+        UPDATE
+            trip_mission
+        SET
+            status = 'COMPLETED',
+            completed_at = NOW(),
+            updated_at = NOW()
+        WHERE
+            trip_id = #{tripId}
+            AND trip_mission_id = #{tripMissionId}
+            AND status = 'IN_PROGRESS'
+    </update>
+
+    <update id="failTripMission">
+        UPDATE
+            trip_mission
+        SET
+            status = 'FAILED',
+            failed_at = NOW(),
+            updated_at = NOW()
+        WHERE
+            trip_id = #{tripId}
+            AND trip_mission_id = #{tripMissionId}
+            AND status = 'IN_PROGRESS'
+    </update>
+
+</mapper>
