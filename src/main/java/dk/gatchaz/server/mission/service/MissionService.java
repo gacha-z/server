@@ -3,9 +3,12 @@ package dk.gatchaz.server.mission.service;
 import dk.gatchaz.server.exception.CommonException;
 import dk.gatchaz.server.exception.ErrorCode;
 import dk.gatchaz.server.mission.dto.MissionCandidateListResponse;
+import dk.gatchaz.server.mission.dto.MissionCandidateRerollInfo;
 import dk.gatchaz.server.mission.dto.MissionCandidateResponse;
 import dk.gatchaz.server.mission.dto.MissionCandidateSelectionInfo;
 import dk.gatchaz.server.mission.dto.MissionCompleteRequest;
+import dk.gatchaz.server.mission.dto.MissionInfo;
+import dk.gatchaz.server.mission.dto.MissionRerollInsertParam;
 import dk.gatchaz.server.mission.dto.MissionSelectParam;
 import dk.gatchaz.server.mission.dto.MissionSelectResponse;
 import dk.gatchaz.server.mission.dto.TripMissionSettingInfo;
@@ -193,5 +196,64 @@ public class MissionService {
         if (failed == 0) {
             throw new CommonException(ErrorCode.NOT_FOUND_TRIP_MISSION);
         }
+    }
+
+    /**
+     * 미션 후보(missionCandidateId)를 리롤한다. 후보당 1회만 가능하다.
+     * 1. 리롤 가능한 후보인지 확인한다. (활성 + 미선택 + reroll_count > 0)
+     * 2. 기존 후보는 비활성화한다. (rerolled_yn true, mission_id 는 그대로 유지해 이력을 보존)
+     * 3. 방금 버린 미션과 다르고, 이 여행에서 아직 선택된 적 없는 미션을 무작위로 1개 뽑는다.
+     * 4. 새 후보를 같은 라운드에 저장한다. (reroll_count = 0, 다시 리롤 불가)
+     * 5. 리롤 이력을 기록한다.
+     */
+    @Transactional
+    public MissionCandidateResponse rerollMission(final Long tripId, final Long missionCandidateId, final Long memberId) {
+        // 1. 리롤 가능한 후보인지 확인
+        final MissionCandidateRerollInfo candidate = missionMapper.selectCandidateForReroll(tripId, missionCandidateId);
+        if (candidate == null) {
+            throw new CommonException(ErrorCode.REROLL_NOT_AVAILABLE);
+        }
+
+        // 2. 기존 후보 비활성화 (동시 리롤 경합 시 실패)
+        final int deactivated = missionMapper.deactivateCandidateForReroll(tripId, missionCandidateId);
+        if (deactivated == 0) {
+            throw new CommonException(ErrorCode.REROLL_NOT_AVAILABLE);
+        }
+
+        // 3. 여행 지역 확인 후, 즉시 중복(방금 버린 미션) + 여행 전체 중복(이미 선택된 미션)을 피해 새 미션 조회
+        final TripMissionSettingInfo trip = missionMapper.selectTripMissionSettingInfo(tripId);
+        if (trip == null) {
+            throw new CommonException(ErrorCode.NOT_FOUND_TRIP);
+        }
+        final MissionInfo newMission =
+                missionMapper.selectRerollMission(tripId, trip.getTripRegionId(), candidate.getMissionId());
+        if (newMission == null) {
+            throw new CommonException(ErrorCode.NO_AVAILABLE_MISSION);
+        }
+
+        // 4. 새 후보를 같은 라운드에 저장 (reroll_count = 0, 다시 리롤 불가)
+        final MissionRerollInsertParam param = MissionRerollInsertParam.builder()
+                .tripId(tripId)
+                .dayNo(candidate.getDayNo())
+                .assignedOrder(candidate.getAssignedOrder())
+                .missionId(newMission.getMissionId())
+                .rerollCount(0)
+                .build();
+        missionMapper.insertRerolledCandidate(param);
+
+        // 5. 리롤 이력 기록
+        missionMapper.insertMissionRerollLog(
+                tripId, candidate.getDayNo(), candidate.getAssignedOrder(),
+                memberId, candidate.getMissionId(), newMission.getMissionId());
+
+        return new MissionCandidateResponse(
+                param.getMissionCandidateId(),
+                newMission.getMissionId(),
+                newMission.getMissionType(),
+                newMission.getTitle(),
+                newMission.getDescription(),
+                newMission.getDifficulty(),
+                "N",
+                false);
     }
 }

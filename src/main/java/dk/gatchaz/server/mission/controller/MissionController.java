@@ -2,6 +2,7 @@ package dk.gatchaz.server.mission.controller;
 
 import dk.gatchaz.server.dto.ResponseDto;
 import dk.gatchaz.server.mission.dto.MissionCandidateListResponse;
+import dk.gatchaz.server.mission.dto.MissionCandidateResponse;
 import dk.gatchaz.server.mission.dto.MissionCompleteRequest;
 import dk.gatchaz.server.mission.dto.MissionSelectResponse;
 import dk.gatchaz.server.mission.service.MissionService;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "Mission", description = "미션 API")
@@ -109,5 +111,30 @@ public class MissionController {
             @Parameter(description = "실패 처리할 진행 미션(trip_mission) ID", example = "1") @PathVariable final Long tripMissionId) {
         missionService.failMission(tripId, tripMissionId);
         return ResponseDto.<Void>ok(null);
+    }
+
+    /**
+     * 미션 후보 리롤
+     */
+    @Operation(
+            summary = "미션 후보 리롤",
+            description = """
+                    미션 후보(missionCandidateId) 하나를 새 미션으로 교체한다. 후보당 1회만 가능하다.
+
+                    - 기존 후보는 비활성화되지만(rerolled_yn=true) mission_id 는 바뀌지 않아 이력이 보존된다.
+                    - 새로 뽑히는 미션은 방금 버린 미션과 다르며(즉시 중복 방지), 이 여행에서 아직 선택된 적 없는 미션이다.
+                    - 리롤로 새로 생긴 후보는 다시 리롤할 수 없다.
+
+                    ### 실패 응답
+                    - 이미 선택/리롤되었거나 리롤 횟수를 소진한 후보면 **409** (REROLL_NOT_AVAILABLE)
+                    - 교체할 수 있는 미션이 없으면 **400** (NO_AVAILABLE_MISSION)
+                    """)
+    @PostMapping("/{missionCandidateId}/reroll")
+    public ResponseDto<MissionCandidateResponse> rerollMission(
+            @Parameter(description = "여행 ID", example = "1") @PathVariable final Long tripId,
+            @Parameter(description = "리롤할 미션 후보 ID", example = "1") @PathVariable final Long missionCandidateId,
+            @Parameter(description = "리롤을 요청한 회원 ID. 로그인 연동 전까지 요청으로 받는다.", example = "1")
+            @RequestParam final Long memberId) {
+        return ResponseDto.ok(missionService.rerollMission(tripId, missionCandidateId, memberId));
     }
 }

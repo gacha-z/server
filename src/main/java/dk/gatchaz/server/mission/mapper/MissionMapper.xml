@@ -95,6 +95,7 @@
                 mission_id,
                 selected_yn,
                 rerolled_yn,
+                reroll_count,
                 created_at
             )
         VALUES
@@ -106,6 +107,7 @@
                 #{missionId},
                 'N',
                 false,
+                1,
                 NOW()
             )
         </foreach>
@@ -249,5 +251,104 @@
             AND trip_mission_id = #{tripMissionId}
             AND status = 'IN_PROGRESS'
     </update>
+
+    <select id="selectCandidateForReroll" resultType="dk.gatchaz.server.mission.dto.MissionCandidateRerollInfo">
+        SELECT
+            mission_candidate_id,
+            mission_id,
+            day_no,
+            assigned_order,
+            reroll_count
+        FROM mission_candidate
+        WHERE trip_id = #{tripId}
+          AND mission_candidate_id = #{missionCandidateId}
+          AND selected_yn = 'N'
+          AND rerolled_yn = false
+          AND reroll_count > 0
+    </select>
+
+    <update id="deactivateCandidateForReroll">
+        UPDATE
+            mission_candidate
+        SET
+            rerolled_yn = true
+        WHERE
+            trip_id = #{tripId}
+            AND mission_candidate_id = #{missionCandidateId}
+            AND selected_yn = 'N'
+            AND rerolled_yn = false
+            AND reroll_count > 0
+    </update>
+
+    <!-- 이 여행에서 이미 선택(selected_yn='Y')된 미션 제외 + 방금 리롤로 버려진 미션(excludeMissionId)도 즉시 중복 방지로 제외 -->
+    <select id="selectRerollMission" resultType="dk.gatchaz.server.mission.dto.MissionInfo">
+        SELECT
+            m.mission_id,
+            m.mission_type,
+            m.title,
+            m.description,
+            m.difficulty
+        FROM mission m
+        LEFT JOIN mission_candidate mc
+            ON mc.mission_id = m.mission_id
+            AND mc.trip_id = #{tripId}
+            AND mc.selected_yn = 'Y'
+        <where>
+            AND m.use_yn = 'Y'
+            AND m.region_id = #{tripRegionId}
+            AND m.mission_id != #{excludeMissionId}
+            AND mc.mission_candidate_id IS NULL
+        </where>
+        ORDER BY RAND()
+        LIMIT 1
+    </select>
+
+    <insert id="insertRerolledCandidate" useGeneratedKeys="true" keyProperty="missionCandidateId" keyColumn="mission_candidate_id">
+        INSERT INTO
+            mission_candidate(
+                trip_id,
+                day_no,
+                assigned_order,
+                mission_id,
+                selected_yn,
+                rerolled_yn,
+                reroll_count,
+                created_at
+            )
+        VALUES
+            (
+                #{tripId},
+                #{dayNo},
+                #{assignedOrder},
+                #{missionId},
+                'N',
+                false,
+                #{rerollCount},
+                NOW()
+            )
+    </insert>
+
+    <insert id="insertMissionRerollLog">
+        INSERT INTO
+            mission_reroll_log(
+                trip_id,
+                day_no,
+                assigned_order,
+                member_id,
+                old_mission_id,
+                new_mission_id,
+                created_at
+            )
+        VALUES
+            (
+                #{tripId},
+                #{dayNo},
+                #{assignedOrder},
+                #{memberId},
+                #{oldMissionId},
+                #{newMissionId},
+                NOW()
+            )
+    </insert>
 
 </mapper>

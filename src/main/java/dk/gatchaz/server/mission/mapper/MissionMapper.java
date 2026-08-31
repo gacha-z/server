@@ -1,7 +1,10 @@
 package dk.gatchaz.server.mission.mapper;
 
+import dk.gatchaz.server.mission.dto.MissionCandidateRerollInfo;
 import dk.gatchaz.server.mission.dto.MissionCandidateResponse;
 import dk.gatchaz.server.mission.dto.MissionCandidateSelectionInfo;
+import dk.gatchaz.server.mission.dto.MissionInfo;
+import dk.gatchaz.server.mission.dto.MissionRerollInsertParam;
 import dk.gatchaz.server.mission.dto.MissionSelectParam;
 import dk.gatchaz.server.mission.dto.TripMissionSettingInfo;
 import dk.gatchaz.server.mission.dto.TripRegionCoordinate;
@@ -128,4 +131,44 @@ public interface MissionMapper {
      * 진행 중 상태가 아니면 0을 반환한다.
      */
     int failTripMission(@Param("tripId") Long tripId, @Param("tripMissionId") Long tripMissionId);
+
+    /**
+     * 리롤(reroll) 대상 후보(missionCandidateId)의 정보를 조회한다.
+     * 해당 여행(tripId)의 활성(rerolled_yn = false) + 미선택(selected_yn = 'N') + 리롤 가능(reroll_count > 0)
+     * 후보가 아니면 null.
+     */
+    MissionCandidateRerollInfo selectCandidateForReroll(@Param("tripId") Long tripId,
+                                                         @Param("missionCandidateId") Long missionCandidateId);
+
+    /**
+     * 리롤 대상 후보(missionCandidateId)를 비활성화한다. (rerolled_yn false -> true, mission_id 는 그대로 유지해 이력을 보존한다)
+     * 리롤 가능 상태가 아니면(이미 선택/리롤되었거나 횟수 소진) 0을 반환한다.
+     */
+    int deactivateCandidateForReroll(@Param("tripId") Long tripId, @Param("missionCandidateId") Long missionCandidateId);
+
+    /**
+     * 사용 가능한(use_yn = 'Y') 미션 중 해당 지역(tripRegionId)에 속하면서,
+     * 이 여행(tripId)에서 이미 선택된 적 없고, 방금 리롤로 버려진 미션(excludeMissionId)과도 다른
+     * 미션을 무작위로 1개 조회한다. (즉시 리롤 중복 방지 + 여행 전체 선택 중복 방지)
+     */
+    MissionInfo selectRerollMission(@Param("tripId") Long tripId,
+                                     @Param("tripRegionId") Long tripRegionId,
+                                     @Param("excludeMissionId") Long excludeMissionId);
+
+    /**
+     * 리롤로 새로 뽑힌 미션을 같은 라운드(dayNo, assignedOrder)의 활성 후보로 저장한다.
+     * (selected_yn = 'N', rerolled_yn = false, reroll_count = 0 - 다시 리롤할 수 없음)
+     * 생성된 mission_candidate_id 는 param.missionCandidateId 에 채워진다.
+     */
+    int insertRerolledCandidate(MissionRerollInsertParam param);
+
+    /**
+     * 리롤 이력을 mission_reroll_log 에 기록한다.
+     */
+    int insertMissionRerollLog(@Param("tripId") Long tripId,
+                                @Param("dayNo") int dayNo,
+                                @Param("assignedOrder") int assignedOrder,
+                                @Param("memberId") Long memberId,
+                                @Param("oldMissionId") Long oldMissionId,
+                                @Param("newMissionId") Long newMissionId);
 }

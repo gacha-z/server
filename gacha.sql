@@ -100,10 +100,19 @@ CREATE TABLE `diary_ai_generation` (
 CREATE TABLE `mission_reroll_log` (
 	`mission_reroll_log_id`	BIGINT	NOT NULL,
 	`trip_id`	BIGINT	NOT NULL,
-	`assigned_order`	INT	NOT NULL	COMMENT '리롤이 발생한 미션 라운드 (mission_candidate.assigned_order 와 동일 기준)',
+	`day_no`	INT	NOT NULL	COMMENT '몇 일차에 발생한 리롤인지',
+	`assigned_order`	INT	NOT NULL	COMMENT '리롤이 발생한 미션 라운드 (해당 일자 내 순번, mission_candidate.assigned_order 와 동일 기준)',
 	`member_id`	BIGINT	NOT NULL,
 	`old_mission_id`	BIGINT	NULL,
 	`new_mission_id`	BIGINT	NOT NULL,
+	`created_at`	DATETIME	NULL
+);
+
+CREATE TABLE `mission_daily_goal` (
+	`mission_daily_goal_id`	BIGINT	NOT NULL,
+	`trip_id`	BIGINT	NOT NULL,
+	`day_no`	INT	NOT NULL	COMMENT '몇 일차인지',
+	`target_round_count`	INT	NOT NULL	COMMENT '그날의 목표 미션 라운드 수 (trip.mission_min~mission_max 사이 랜덤으로 정해서 하루 동안 고정)',
 	`created_at`	DATETIME	NULL
 );
 
@@ -200,10 +209,12 @@ CREATE TABLE `trip_candidate` (
 CREATE TABLE `mission_candidate` (
 	`mission_candidate_id`	BIGINT	NOT NULL,
 	`trip_id`	BIGINT	NOT NULL,
-	`assigned_order`	INT	NOT NULL	COMMENT '여행 내 몇 번째 미션 라운드인지 (trip_mission.assigned_order 와 동일 기준)',
+	`day_no`	INT	NOT NULL	COMMENT '몇 일차 후보인지',
+	`assigned_order`	INT	NOT NULL	COMMENT '해당 일자 내 몇 번째 미션 라운드인지 (trip_mission.assigned_order 와 동일 기준)',
 	`mission_id`	BIGINT	NOT NULL,
 	`selected_yn`	CHAR(1)	NOT NULL	DEFAULT 'N',
 	`rerolled_yn`	BOOLEAN	NOT NULL	DEFAULT FALSE	COMMENT 'true = 리롤되어 교체된(비활성) 후보. 리롤 시 이 행은 그대로 두고(이력 보존) 새 행을 추가한다',
+	`reroll_count`	INT	NULL	COMMENT '남은 리롤 가능 횟수. 최초 생성 후보는 1, 리롤로 새로 생긴 후보는 0(더 이상 리롤 불가)',
 	`created_at`	DATETIME	NULL
 );
 
@@ -250,7 +261,8 @@ CREATE TABLE `trip_mission` (
 	`trip_mission_id`	BIGINT	NOT NULL,
 	`trip_id`	BIGINT	NOT NULL,
 	`mission_id`	BIGINT	NOT NULL,
-	`assigned_order`	INT	NULL,
+	`day_no`	INT	NOT NULL	COMMENT '몇 일차 미션인지',
+	`assigned_order`	INT	NULL	COMMENT '해당 일자 내 몇 번째 라운드에서 선택된 미션인지',
 	`status`	VARCHAR(30)	NULL,
 	`started_at`	DATETIME	NULL,
 	`completed_at`	DATETIME	NULL,
@@ -330,6 +342,10 @@ ALTER TABLE `diary_ai_generation` ADD CONSTRAINT `PK_DIARY_AI_GENERATION` PRIMAR
 
 ALTER TABLE `mission_reroll_log` ADD CONSTRAINT `PK_MISSION_REROLL_LOG` PRIMARY KEY (
 	`mission_reroll_log_id`
+);
+
+ALTER TABLE `mission_daily_goal` ADD CONSTRAINT `PK_MISSION_DAILY_GOAL` PRIMARY KEY (
+	`mission_daily_goal_id`
 );
 
 ALTER TABLE `common_code` ADD CONSTRAINT `PK_COMMON_CODE` PRIMARY KEY (
@@ -432,6 +448,8 @@ ALTER TABLE `mission_reroll_log` ADD CONSTRAINT `FK_MISSION_REROLL_LOG_TRIP` FOR
 ALTER TABLE `mission_reroll_log` ADD CONSTRAINT `FK_MISSION_REROLL_LOG_MEMBER` FOREIGN KEY (`member_id`) REFERENCES `member` (`member_id`);
 ALTER TABLE `mission_reroll_log` ADD CONSTRAINT `FK_MISSION_REROLL_LOG_OLD_MISSION` FOREIGN KEY (`old_mission_id`) REFERENCES `mission` (`mission_id`);
 ALTER TABLE `mission_reroll_log` ADD CONSTRAINT `FK_MISSION_REROLL_LOG_NEW_MISSION` FOREIGN KEY (`new_mission_id`) REFERENCES `mission` (`mission_id`);
+
+ALTER TABLE `mission_daily_goal` ADD CONSTRAINT `FK_MISSION_DAILY_GOAL_TRIP` FOREIGN KEY (`trip_id`) REFERENCES `trip` (`trip_id`);
 
 ALTER TABLE `mission` ADD CONSTRAINT `FK_MISSION_TRIP_REGION` FOREIGN KEY (`region_id`) REFERENCES `trip_region` (`trip_region_id`);
 
