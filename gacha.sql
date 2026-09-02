@@ -46,7 +46,8 @@ CREATE TABLE `trip_region` (
 	`latitude`	DECIMAL(10,7)	NULL,
 	`longitude`	DECIMAL(10,7)	NULL,
 	`use_yn`	CHAR(1)	NULL	DEFAULT 'Y',
-	`created_at`	DATETIME	NULL
+	`created_at`	DATETIME	NULL,
+	`image_url`	VARCHAR(255)	NULL	COMMENT '지역 대표 이미지'
 );
 
 CREATE TABLE `trip_invite` (
@@ -213,7 +214,7 @@ CREATE TABLE `mission_candidate` (
 	`assigned_order`	INT	NOT NULL	COMMENT '해당 일자 내 몇 번째 미션 라운드인지 (trip_mission.assigned_order 와 동일 기준)',
 	`mission_id`	BIGINT	NOT NULL,
 	`selected_yn`	CHAR(1)	NOT NULL	DEFAULT 'N',
-	`rerolled_yn`	BOOLEAN	NOT NULL	DEFAULT FALSE	COMMENT 'true = 리롤되어 교체된(비활성) 후보. 리롤 시 이 행은 그대로 두고(이력 보존) 새 행을 추가한다',
+	`rerolled_yn`	CHAR(1)	NOT NULL	DEFAULT 'N'	COMMENT 'Y = 리롤되어 교체된(비활성) 후보. 리롤 시 이 행은 그대로 두고(이력 보존) 새 행을 추가한다',
 	`reroll_count`	INT	NULL	COMMENT '남은 리롤 가능 횟수. 최초 생성 후보는 1, 리롤로 새로 생긴 후보는 0(더 이상 리롤 불가)',
 	`created_at`	DATETIME	NULL
 );
@@ -276,6 +277,7 @@ CREATE TABLE `diary` (
 	`trip_id`	BIGINT	NOT NULL,
 	`member_id`	BIGINT	NOT NULL,
 	`content`	TEXT	NULL,
+	`diary_date`	DATE	NULL,
 	`visibility`	VARCHAR(30)	NULL	DEFAULT 'TEAM',
 	`status`	VARCHAR(30)	NULL,
 	`is_ai_generated`	CHAR(1)	NOT NULL	DEFAULT 'N',
@@ -306,6 +308,10 @@ CREATE TABLE `device_permission` (
 
 ALTER TABLE `trip` ADD CONSTRAINT `PK_TRIP` PRIMARY KEY (
 	`trip_id`
+);
+
+ALTER TABLE `trip` ADD CONSTRAINT `UK_TRIP_INVITE_CODE` UNIQUE (
+	`invite_code`
 );
 
 ALTER TABLE `policy` ADD CONSTRAINT `PK_POLICY` PRIMARY KEY (
