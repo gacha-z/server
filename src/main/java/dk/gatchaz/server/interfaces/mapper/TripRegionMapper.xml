@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dk.gatchaz.server.interfaces.mapper.TripRegionMapper">
+
+    <select id="selectImageTargetRegions" resultType="dk.gatchaz.server.interfaces.dto.TripRegionImageTarget">
+        SELECT
+            trip_region_id,
+            trip_region_code,
+            trip_region_name
+        FROM trip_region
+        <where>
+            AND use_yn = 'Y'
+            AND trip_region_code IS NOT NULL
+        </where>
+        ORDER BY trip_region_id
+    </select>
+
+    <update id="updateImageUrl">
+        UPDATE
+            trip_region
+        SET
+            image_url = #{imageUrl}
+        WHERE
+            trip_region_id = #{tripRegionId}
+    </update>
+
+</mapper>
