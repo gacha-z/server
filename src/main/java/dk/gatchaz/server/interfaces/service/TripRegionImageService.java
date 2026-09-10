@@ -1,6 +1,6 @@
 package dk.gatchaz.server.interfaces.service;
 
-import dk.gatchaz.server.exception.CommonException;
+import dk.gatchaz.server.common.exception.CommonException;
 import dk.gatchaz.server.interfaces.dto.LdongCode;
 import dk.gatchaz.server.interfaces.dto.TourAreaBasedItem;
 import dk.gatchaz.server.interfaces.dto.TripRegionImageFailure;

@@ -1,6 +1,6 @@
 package dk.gatchaz.server.member.controller;
 
-import dk.gatchaz.server.dto.ResponseDto;
+import dk.gatchaz.server.common.dto.ResponseDto;
 import dk.gatchaz.server.member.dto.MemberCreateRequest;
 import dk.gatchaz.server.member.dto.MemberCreateResponse;
 import dk.gatchaz.server.member.dto.MemberDetailResponse;

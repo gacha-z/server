@@ -3,7 +3,7 @@ package dk.gatchaz.server.collection.controller;
 import dk.gatchaz.server.collection.dto.BadgeResponse;
 import dk.gatchaz.server.collection.dto.CollectionItemResponse;
 import dk.gatchaz.server.collection.service.CollectionService;
-import dk.gatchaz.server.dto.ResponseDto;
+import dk.gatchaz.server.common.dto.ResponseDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;

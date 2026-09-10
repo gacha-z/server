@@ -1,7 +1,7 @@
 package dk.gatchaz.server.member.service;
 
-import dk.gatchaz.server.exception.CommonException;
-import dk.gatchaz.server.exception.ErrorCode;
+import dk.gatchaz.server.common.exception.CommonException;
+import dk.gatchaz.server.common.exception.ErrorCode;
 import dk.gatchaz.server.member.dto.MemberCreateParam;
 import dk.gatchaz.server.member.dto.MemberCreateRequest;
 import dk.gatchaz.server.member.dto.MemberCreateResponse;

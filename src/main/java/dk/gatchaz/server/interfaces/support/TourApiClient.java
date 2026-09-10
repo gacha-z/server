@@ -2,8 +2,8 @@ package dk.gatchaz.server.interfaces.support;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dk.gatchaz.server.exception.CommonException;
-import dk.gatchaz.server.exception.ErrorCode;
+import dk.gatchaz.server.common.exception.CommonException;
+import dk.gatchaz.server.common.exception.ErrorCode;
 import dk.gatchaz.server.interfaces.config.TourApiProperties;
 import dk.gatchaz.server.interfaces.dto.LdongCode;
 import dk.gatchaz.server.interfaces.dto.TourAreaBasedItem;

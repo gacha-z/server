@@ -1,7 +1,7 @@
 package dk.gatchaz.server.setlog.service;
 
-import dk.gatchaz.server.exception.CommonException;
-import dk.gatchaz.server.exception.ErrorCode;
+import dk.gatchaz.server.common.exception.CommonException;
+import dk.gatchaz.server.common.exception.ErrorCode;
 import dk.gatchaz.server.setlog.dto.SetlogDownloadResponse;
 import dk.gatchaz.server.setlog.dto.SetlogInsertParam;
 import dk.gatchaz.server.setlog.dto.SetlogResponse;

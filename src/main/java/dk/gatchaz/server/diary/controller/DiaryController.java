@@ -8,7 +8,7 @@ import dk.gatchaz.server.diary.dto.DiaryListResponse;
 import dk.gatchaz.server.diary.dto.DiarySearchRequest;
 import dk.gatchaz.server.diary.dto.DiaryUpdateRequest;
 import dk.gatchaz.server.diary.service.DiaryService;
-import dk.gatchaz.server.dto.ResponseDto;
+import dk.gatchaz.server.common.dto.ResponseDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;

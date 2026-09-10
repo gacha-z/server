@@ -1,7 +1,7 @@
 package dk.gatchaz.server.trip.service;
 
-import dk.gatchaz.server.exception.CommonException;
-import dk.gatchaz.server.exception.ErrorCode;
+import dk.gatchaz.server.common.exception.CommonException;
+import dk.gatchaz.server.common.exception.ErrorCode;
 import dk.gatchaz.server.notification.event.TripCancelledEvent;
 import dk.gatchaz.server.trip.dto.TripCreateParam;
 import dk.gatchaz.server.trip.dto.TripCreateRequest;

@@ -2,8 +2,8 @@ package dk.gatchaz.server.notification.service;
 
 import dk.gatchaz.server.interfaces.dto.FcmSendResult;
 import dk.gatchaz.server.interfaces.support.FcmClient;
-import dk.gatchaz.server.exception.CommonException;
-import dk.gatchaz.server.exception.ErrorCode;
+import dk.gatchaz.server.common.exception.CommonException;
+import dk.gatchaz.server.common.exception.ErrorCode;
 import dk.gatchaz.server.notification.dto.DevicePermissionResponse;
 import dk.gatchaz.server.notification.dto.DevicePermissionSaveParam;
 import dk.gatchaz.server.notification.dto.DevicePermissionUpdateRequest;

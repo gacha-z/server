@@ -1,6 +1,6 @@
 package dk.gatchaz.server.notification.controller;
 
-import dk.gatchaz.server.dto.ResponseDto;
+import dk.gatchaz.server.common.dto.ResponseDto;
 import dk.gatchaz.server.notification.dto.DevicePermissionResponse;
 import dk.gatchaz.server.notification.dto.DevicePermissionUpdateRequest;
 import dk.gatchaz.server.notification.dto.DeviceRegisterRequest;

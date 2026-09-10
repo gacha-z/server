@@ -11,7 +11,7 @@ public enum ErrorCode {
 
     // Bad Request Error
     NOT_END_POINT(40000, HttpStatus.BAD_REQUEST, "End Point가 존재하지 않습니다."),
-    NOT_FOUND_RESOURCE(40000, HttpStatus.BAD_REQUEST, "해당 리소스가 존재하지 않습니다."),
+    NOT_FOUND_RESOURCE(40022, HttpStatus.BAD_REQUEST, "해당 리소스가 존재하지 않습니다."),
     INVALID_ARGUMENT(40001, HttpStatus.BAD_REQUEST, "Invalid Argument"),
     INVALID_PROVIDER(40002, HttpStatus.BAD_REQUEST, "유효하지 않은 제공자입니다."),
     METHOD_NOT_ALLOWED(40003, HttpStatus.BAD_REQUEST, "지원하지 않는 HTTP Method 입니다."),
@@ -21,7 +21,7 @@ public enum ErrorCode {
 
     UNKNOWN_NATIONAL_CODE_ERROR(40007, HttpStatus.BAD_REQUEST, "Unknown national code"),
     UNKNOWN_BLOOD_TYPE_ERROR(40008, HttpStatus.BAD_REQUEST, "Unknown blood type"),
-    UNKNOWN_GENDER_ERROR(40008, HttpStatus.BAD_REQUEST, "Unknown gender"),
+    UNKNOWN_GENDER_ERROR(40023, HttpStatus.BAD_REQUEST, "Unknown gender"),
 
     EXPIRED_TOKEN_ERROR(40100, HttpStatus.UNAUTHORIZED, "만료된 토큰입니다."),
     INVALID_TOKEN_ERROR(40101, HttpStatus.UNAUTHORIZED, "유효하지 않은 토큰입니다."),
@@ -31,8 +31,9 @@ public enum ErrorCode {
     TOKEN_GENERATION_ERROR(40105, HttpStatus.UNAUTHORIZED, "토큰 생성에 실패하였습니다."),
     FAILURE_LOGIN(40106, HttpStatus.UNAUTHORIZED, "로그인에 실패하였습니다."),
     FAILURE_LOGOUT(40107, HttpStatus.UNAUTHORIZED, "로그아웃에 실패하였습니다."),
-    TOKEN_UNKNOWN_ERROR(40106, HttpStatus.UNAUTHORIZED, "알 수 없는 토큰입니다."),
-    NO_MATCH_APPLE_PUBLIC_KEY_ERROR(40107, HttpStatus.UNAUTHORIZED, "No matching Apple public key found for kid"),
+    TOKEN_UNKNOWN_ERROR(40115, HttpStatus.UNAUTHORIZED, "알 수 없는 토큰입니다."),
+    NO_MATCH_APPLE_PUBLIC_KEY_ERROR(40116, HttpStatus.UNAUTHORIZED, "No matching Apple public key found for kid"),
+    INVALID_APPLE_TOKEN_AUDIENCE_ERROR(40117, HttpStatus.UNAUTHORIZED, "Invalid apple audience"),
     FAILED_LOAD_OR_PARSE_APPLE_PUBLIC_KEY_ERROR(40108, HttpStatus.UNAUTHORIZED, "Failed to load or parse Apple public key"),
     SOCIAL_LOGIN_ERROR(40109, HttpStatus.UNAUTHORIZED, "Social Login Failed"),
     INVALID_APPLE_TOKEN_SIGNATURE_ERROR(40110, HttpStatus.UNAUTHORIZED, "Invalid identity token signature"),

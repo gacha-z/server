@@ -1,7 +1,7 @@
 package dk.gatchaz.server.mission.service;
 
-import dk.gatchaz.server.exception.CommonException;
-import dk.gatchaz.server.exception.ErrorCode;
+import dk.gatchaz.server.common.exception.CommonException;
+import dk.gatchaz.server.common.exception.ErrorCode;
 import dk.gatchaz.server.mission.dto.MissionCandidateListResponse;
 import dk.gatchaz.server.mission.dto.MissionCandidateRerollInfo;
 import dk.gatchaz.server.mission.dto.MissionCandidateResponse;

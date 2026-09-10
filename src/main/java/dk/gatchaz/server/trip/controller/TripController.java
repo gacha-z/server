@@ -1,6 +1,6 @@
 package dk.gatchaz.server.trip.controller;
 
-import dk.gatchaz.server.dto.ResponseDto;
+import dk.gatchaz.server.common.dto.ResponseDto;
 import dk.gatchaz.server.trip.dto.TripCreateRequest;
 import dk.gatchaz.server.trip.dto.TripCreateResponse;
 import dk.gatchaz.server.trip.dto.TripDetailResponse;

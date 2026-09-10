@@ -1,6 +1,6 @@
 package dk.gatchaz.server.mission.controller;
 
-import dk.gatchaz.server.dto.ResponseDto;
+import dk.gatchaz.server.common.dto.ResponseDto;
 import dk.gatchaz.server.mission.dto.MissionCandidateListResponse;
 import dk.gatchaz.server.mission.dto.MissionCandidateResponse;
 import dk.gatchaz.server.mission.dto.MissionCompleteRequest;

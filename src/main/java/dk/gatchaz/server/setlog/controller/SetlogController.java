@@ -1,6 +1,6 @@
 package dk.gatchaz.server.setlog.controller;
 
-import dk.gatchaz.server.dto.ResponseDto;
+import dk.gatchaz.server.common.dto.ResponseDto;
 import dk.gatchaz.server.setlog.dto.SetlogDownloadResponse;
 import dk.gatchaz.server.setlog.dto.SetlogResponse;
 import dk.gatchaz.server.setlog.dto.SetlogUploadResponse;

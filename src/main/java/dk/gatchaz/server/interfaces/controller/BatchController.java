@@ -1,6 +1,6 @@
 package dk.gatchaz.server.interfaces.controller;
 
-import dk.gatchaz.server.dto.ResponseDto;
+import dk.gatchaz.server.common.dto.ResponseDto;
 import dk.gatchaz.server.interfaces.dto.TripRegionImageResponse;
 import dk.gatchaz.server.interfaces.service.TripRegionImageService;
 import io.swagger.v3.oas.annotations.Operation;

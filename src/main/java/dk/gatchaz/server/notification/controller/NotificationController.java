@@ -1,6 +1,6 @@
 package dk.gatchaz.server.notification.controller;
 
-import dk.gatchaz.server.dto.ResponseDto;
+import dk.gatchaz.server.common.dto.ResponseDto;
 import dk.gatchaz.server.notification.dto.NotificationListResponse;
 import dk.gatchaz.server.notification.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
