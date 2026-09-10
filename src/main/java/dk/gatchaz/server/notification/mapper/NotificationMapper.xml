@@ -53,6 +53,64 @@
             device_id = #{deviceId}
     </update>
 
+    <select id="countDeviceById" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM device
+        WHERE device_id = #{deviceId}
+    </select>
+
+    <select id="selectDevicePermissionIdByDeviceId" resultType="java.lang.Long">
+        SELECT
+            device_permission_id
+        FROM device_permission
+        WHERE device_id = #{deviceId}
+    </select>
+
+    <select id="selectDevicePermissionByDeviceId" resultType="dk.gatchaz.server.notification.dto.DevicePermissionResponse">
+        SELECT
+            device_permission_id,
+            device_id,
+            location_status,
+            camera_status,
+            notification_status,
+            updated_at
+        FROM device_permission
+        WHERE device_id = #{deviceId}
+    </select>
+
+    <insert id="insertDevicePermission" useGeneratedKeys="true" keyProperty="devicePermissionId" keyColumn="device_permission_id">
+        INSERT INTO
+            device_permission(
+                device_id,
+                location_status,
+                camera_status,
+                notification_status,
+                updated_at
+            )
+        VALUES
+            (
+                #{deviceId},
+                #{locationStatus},
+                #{cameraStatus},
+                #{notificationStatus},
+                NOW()
+            )
+    </insert>
+
+    <update id="updateDevicePermission">
+        UPDATE
+            device_permission
+        <set>
+            <if test="locationStatus != null">location_status = #{locationStatus},</if>
+            <if test="cameraStatus != null">camera_status = #{cameraStatus},</if>
+            <if test="notificationStatus != null">notification_status = #{notificationStatus},</if>
+            updated_at = NOW()
+        </set>
+        WHERE
+            device_id = #{deviceId}
+    </update>
+
     <select id="selectNotifications" resultType="dk.gatchaz.server.notification.dto.NotificationResponse">
         SELECT
             n.notification_id,

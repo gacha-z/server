@@ -2,6 +2,11 @@ package dk.gatchaz.server.notification.service;
 
 import dk.gatchaz.server.interfaces.dto.FcmSendResult;
 import dk.gatchaz.server.interfaces.support.FcmClient;
+import dk.gatchaz.server.exception.CommonException;
+import dk.gatchaz.server.exception.ErrorCode;
+import dk.gatchaz.server.notification.dto.DevicePermissionResponse;
+import dk.gatchaz.server.notification.dto.DevicePermissionSaveParam;
+import dk.gatchaz.server.notification.dto.DevicePermissionUpdateRequest;
 import dk.gatchaz.server.notification.dto.DeviceRegisterRequest;
 import dk.gatchaz.server.notification.dto.DeviceRegisterResponse;
 import dk.gatchaz.server.notification.dto.DeviceSaveParam;
@@ -80,6 +85,35 @@ public class NotificationService {
             notificationMapper.updateDevice(param);
         }
         return new DeviceRegisterResponse(param.getDeviceId());
+    }
+
+    /**
+     * 디바이스(deviceId)의 권한 상태(위치/카메라/알림)를 갱신한다. 부분 업데이트 - 값을 보낸 필드만 반영한다.
+     * 권한 상태 행이 아직 없으면(최초 호출) 새로 만들고, 있으면 갱신한다. 대상 디바이스가 없으면 예외를 던진다.
+     */
+    @Transactional
+    public DevicePermissionResponse updateDevicePermission(final Long deviceId,
+                                                            final DevicePermissionUpdateRequest request) {
+        if (notificationMapper.countDeviceById(deviceId) == 0) {
+            throw new CommonException(ErrorCode.NOT_FOUND_DEVICE);
+        }
+
+        final Long devicePermissionId = notificationMapper.selectDevicePermissionIdByDeviceId(deviceId);
+
+        final DevicePermissionSaveParam param = DevicePermissionSaveParam.builder()
+                .deviceId(deviceId)
+                .locationStatus(request.getLocationStatus())
+                .cameraStatus(request.getCameraStatus())
+                .notificationStatus(request.getNotificationStatus())
+                .build();
+
+        if (devicePermissionId == null) {
+            notificationMapper.insertDevicePermission(param);
+        } else {
+            notificationMapper.updateDevicePermission(param);
+        }
+
+        return notificationMapper.selectDevicePermissionByDeviceId(deviceId);
     }
 
     /**

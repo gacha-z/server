@@ -1,5 +1,7 @@
 package dk.gatchaz.server.notification.mapper;
 
+import dk.gatchaz.server.notification.dto.DevicePermissionResponse;
+import dk.gatchaz.server.notification.dto.DevicePermissionSaveParam;
 import dk.gatchaz.server.notification.dto.DeviceSaveParam;
 import dk.gatchaz.server.notification.dto.DeviceTokenDto;
 import dk.gatchaz.server.notification.dto.DiaryNotificationContext;
@@ -31,6 +33,31 @@ public interface NotificationMapper {
      * 이미 등록된 기기의 소유자·OS·앱 버전·수신 여부를 갱신하고 최근 접속 시각을 기록한다.
      */
     int updateDevice(DeviceSaveParam param);
+
+    /**
+     * 디바이스(deviceId)가 존재하는지 확인한다.
+     */
+    int countDeviceById(@Param("deviceId") Long deviceId);
+
+    /**
+     * 디바이스(deviceId)의 권한 상태(device_permission) 행 ID 를 조회한다. 없으면 null.
+     */
+    Long selectDevicePermissionIdByDeviceId(@Param("deviceId") Long deviceId);
+
+    /**
+     * 디바이스(deviceId)의 권한 상태를 단건 조회한다. 없으면 null.
+     */
+    DevicePermissionResponse selectDevicePermissionByDeviceId(@Param("deviceId") Long deviceId);
+
+    /**
+     * 디바이스 권한 상태를 새로 등록한다. 생성된 device_permission_id 는 param.devicePermissionId 에 채워진다.
+     */
+    int insertDevicePermission(DevicePermissionSaveParam param);
+
+    /**
+     * 디바이스 권한 상태를 부분 갱신한다. (값이 있는 필드만 갱신, 나머지는 기존 값 유지)
+     */
+    int updateDevicePermission(DevicePermissionSaveParam param);
 
     /**
      * 알림함 목록을 최신순(notification_id 내림차순)으로 조회한다.

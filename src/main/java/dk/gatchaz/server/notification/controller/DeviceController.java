@@ -1,13 +1,18 @@
 package dk.gatchaz.server.notification.controller;
 
 import dk.gatchaz.server.dto.ResponseDto;
+import dk.gatchaz.server.notification.dto.DevicePermissionResponse;
+import dk.gatchaz.server.notification.dto.DevicePermissionUpdateRequest;
 import dk.gatchaz.server.notification.dto.DeviceRegisterRequest;
 import dk.gatchaz.server.notification.dto.DeviceRegisterResponse;
 import dk.gatchaz.server.notification.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -48,5 +53,20 @@ public class DeviceController {
     public ResponseDto<DeviceRegisterResponse> registerDevice(
             @Valid @RequestBody final DeviceRegisterRequest request) {
         return ResponseDto.ok(notificationService.registerDevice(request));
+    }
+
+    /**
+     * 디바이스 권한 상태 갱신
+     */
+    @Operation(
+            summary = "디바이스 권한 상태 갱신",
+            description = "디바이스(deviceId)의 위치/카메라/알림 권한 상태를 갱신한다(부분 업데이트 - 값을 보낸 필드만 반영, 나머지는 기존 값 유지). "
+                    + "권한 상태를 처음 보내는 디바이스면 자동으로 새로 등록된다. 값은 클라이언트(OS)가 보내는 문자열을 그대로 저장한다(서버 검증 없음). "
+                    + "대상 디바이스가 없으면 404 를 반환한다.")
+    @PatchMapping("/{deviceId}/permissions")
+    public ResponseDto<DevicePermissionResponse> updateDevicePermission(
+            @Parameter(description = "권한 상태를 갱신할 디바이스 ID", example = "1") @PathVariable final Long deviceId,
+            @Valid @RequestBody final DevicePermissionUpdateRequest request) {
+        return ResponseDto.ok(notificationService.updateDevicePermission(deviceId, request));
     }
 }

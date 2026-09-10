@@ -96,6 +96,9 @@ public enum ErrorCode {
     NOT_FOUND_SETLOG(40409, HttpStatus.NOT_FOUND, "해당 셋로그가 존재하지 않습니다."),
     ALREADY_EXISTS_SETLOG(40906, HttpStatus.CONFLICT, "이미 이 미션에 셋로그를 등록했습니다."),
 
+    // 디바이스 관련 에러 코드
+    NOT_FOUND_DEVICE(40410, HttpStatus.NOT_FOUND, "해당 디바이스가 존재하지 않습니다."),
+
     ;
 
     private final Integer code;
