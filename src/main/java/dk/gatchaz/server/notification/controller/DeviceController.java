@@ -1,5 +1,6 @@
 package dk.gatchaz.server.notification.controller;
 
+import dk.gatchaz.server.common.annotation.UserId;
 import dk.gatchaz.server.common.dto.ResponseDto;
 import dk.gatchaz.server.notification.dto.DevicePermissionResponse;
 import dk.gatchaz.server.notification.dto.DevicePermissionUpdateRequest;
@@ -51,8 +52,9 @@ public class DeviceController {
                     """)
     @PostMapping
     public ResponseDto<DeviceRegisterResponse> registerDevice(
+            @UserId final Long memberId,
             @Valid @RequestBody final DeviceRegisterRequest request) {
-        return ResponseDto.ok(notificationService.registerDevice(request));
+        return ResponseDto.ok(notificationService.registerDevice(request, memberId));
     }
 
     /**

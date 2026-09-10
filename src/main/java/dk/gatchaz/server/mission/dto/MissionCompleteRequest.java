@@ -16,10 +16,6 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 public class MissionCompleteRequest {
 
-    @Schema(description = "완료를 요청한 회원 ID. 로그인 연동 전까지 요청으로 받는다.", example = "1")
-    @NotNull
-    private Long memberId;
-
     @Schema(description = "완료 시점 위도", example = "33.4996213")
     @NotNull
     private BigDecimal latitude;

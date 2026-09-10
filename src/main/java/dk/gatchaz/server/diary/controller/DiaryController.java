@@ -1,5 +1,6 @@
 package dk.gatchaz.server.diary.controller;
 
+import dk.gatchaz.server.common.annotation.UserId;
 import dk.gatchaz.server.diary.dto.DiaryCreateRequest;
 import dk.gatchaz.server.diary.dto.DiaryDetailResponse;
 import dk.gatchaz.server.diary.dto.DiaryGenerateRequest;
@@ -40,8 +41,10 @@ public class DiaryController {
      */
     @Operation(summary = "일기 저장", description = "요청의 content 를 그대로 저장한다(생성 로직 없음). 직접 작성한 내용 또는 /generate 로 받은 AI 초안을 저장한다. AI 초안 저장 시 isAiGenerated=true 로 보내면 is_ai_generated='Y' 로 기록된다(미지정 시 'N'). tripId·memberId 필수, visibility 미지정 시 TEAM. 저장된 일기 전체를 반환한다.")
     @PostMapping
-    public ResponseDto<DiaryDetailResponse> createDiary(@Valid @RequestBody final DiaryCreateRequest request) {
-        return ResponseDto.created(diaryService.createDiary(request));
+    public ResponseDto<DiaryDetailResponse> createDiary(
+            @UserId final Long memberId,
+            @Valid @RequestBody final DiaryCreateRequest request) {
+        return ResponseDto.created(diaryService.createDiary(request, memberId));
     }
 
     /**
@@ -49,7 +52,9 @@ public class DiaryController {
      */
     @Operation(summary = "AI 일기 초안 생성(미리보기)", description = "content(사용자 입력)로 AI가 본문 초안을 생성해 반환한다(저장하지 않음). 사용자가 검토·수정 후 완료 시, POST /diaries 에 content=초안, isAiGenerated=true 로 호출해 저장한다. 무료 티어(Groq) 사용. 키 미설정/한도초과/오류 시 503(AI_GENERATION_FAILED).")
     @PostMapping("/generate")
-    public ResponseDto<DiaryGenerateResponse> generateDiary(@Valid @RequestBody final DiaryGenerateRequest request) {
+    public ResponseDto<DiaryGenerateResponse> generateDiary(
+            @UserId final Long memberId,
+            @Valid @RequestBody final DiaryGenerateRequest request) {
         return ResponseDto.ok(diaryService.generateDiary(request));
     }
 

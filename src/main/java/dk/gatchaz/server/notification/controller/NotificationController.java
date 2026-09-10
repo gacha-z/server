@@ -1,5 +1,6 @@
 package dk.gatchaz.server.notification.controller;
 
+import dk.gatchaz.server.common.annotation.UserId;
 import dk.gatchaz.server.common.dto.ResponseDto;
 import dk.gatchaz.server.notification.dto.NotificationListResponse;
 import dk.gatchaz.server.notification.service.NotificationService;
@@ -48,8 +49,7 @@ public class NotificationController {
                     """)
     @GetMapping
     public ResponseDto<NotificationListResponse> getNotifications(
-            @Parameter(description = "조회 기준 회원 ID. 로그인 연동 전까지 요청으로 받는다.", example = "1")
-            @RequestParam final Long memberId,
+            @UserId final Long memberId,
             @Parameter(description = "무한 스크롤 커서. 이전 응답의 nextCursor 값을 넣는다. 첫 조회 시 비운다.", example = "12")
             @RequestParam(required = false) final Long cursor,
             @Parameter(description = "한 번에 조회할 개수 (기본 20, 1~50 범위를 벗어나면 자동 보정)", example = "20")
@@ -72,8 +72,7 @@ public class NotificationController {
     @PatchMapping("/{notificationId}/read")
     public ResponseDto<Void> readNotification(
             @Parameter(description = "읽음 처리할 알림 ID", example = "12") @PathVariable final Long notificationId,
-            @Parameter(description = "요청자 회원 ID. 로그인 연동 전까지 요청으로 받는다.", example = "1")
-            @RequestParam final Long memberId) {
+            @UserId final Long memberId) {
         notificationService.readNotification(notificationId, memberId);
         return ResponseDto.<Void>ok(null);
     }

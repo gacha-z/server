@@ -1,5 +1,6 @@
 package dk.gatchaz.server.mission.controller;
 
+import dk.gatchaz.server.common.annotation.UserId;
 import dk.gatchaz.server.common.dto.ResponseDto;
 import dk.gatchaz.server.mission.dto.MissionCandidateListResponse;
 import dk.gatchaz.server.mission.dto.MissionCandidateResponse;
@@ -16,7 +17,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "Mission", description = "미션 API")
@@ -96,8 +96,9 @@ public class MissionController {
     public ResponseDto<Void> completeMission(
             @Parameter(description = "여행 ID", example = "1") @PathVariable final Long tripId,
             @Parameter(description = "완료 처리할 진행 미션(trip_mission) ID", example = "1") @PathVariable final Long tripMissionId,
+            @UserId final Long memberId,
             @Valid @RequestBody final MissionCompleteRequest request) {
-        missionService.completeMission(tripId, tripMissionId, request);
+        missionService.completeMission(tripId, tripMissionId, request, memberId);
         return ResponseDto.<Void>ok(null);
     }
 
@@ -133,8 +134,7 @@ public class MissionController {
     public ResponseDto<MissionCandidateResponse> rerollMission(
             @Parameter(description = "여행 ID", example = "1") @PathVariable final Long tripId,
             @Parameter(description = "리롤할 미션 후보 ID", example = "1") @PathVariable final Long missionCandidateId,
-            @Parameter(description = "리롤을 요청한 회원 ID. 로그인 연동 전까지 요청으로 받는다.", example = "1")
-            @RequestParam final Long memberId) {
+            @UserId final Long memberId) {
         return ResponseDto.ok(missionService.rerollMission(tripId, missionCandidateId, memberId));
     }
 }

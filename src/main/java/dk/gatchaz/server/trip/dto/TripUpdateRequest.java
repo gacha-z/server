@@ -3,7 +3,6 @@ package dk.gatchaz.server.trip.dto;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -44,8 +43,4 @@ public class TripUpdateRequest {
     @Schema(description = "첫 미션 받을 시각 (시·분만, 예: \"10:00\"). 최종 여행 시작일과 합쳐 첫 미션 일시로 저장된다.", example = "10:00", type = "string")
     @JsonFormat(pattern = "HH:mm")
     private LocalTime missionStartTime;
-
-    @Schema(description = "요청자(방장) 회원 ID. 로그인 연동 전까지 항상 필수로 받는다.", example = "1")
-    @NotNull
-    private Long requestMemberId;
 }

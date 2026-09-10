@@ -48,6 +48,4 @@ public class TripCreateRequest {
     @JsonFormat(pattern = "HH:mm")
     private LocalTime missionStartTime;
 
-    /** 여행 생성자(owner) 회원 ID. 로그인 연동 전까지 요청으로 받는 선택값이다. */
-    private Long memberId;
 }

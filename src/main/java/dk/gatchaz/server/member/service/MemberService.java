@@ -40,7 +40,7 @@ public class MemberService {
      */
     @Transactional(readOnly = true)
     public MemberDetailResponse getMember(final Long memberId) {
-        // TODO: 로그인 연동 후 인증된 사용자(member_id)로 교체. 로그인 연동 전까지는 요청으로 회원 ID 를 받는다.
+        // memberId 는 컨트롤러에서 @UserId 로 주입된 인증된 사용자 ID 이다.
         final MemberDetailResponse member = memberMapper.selectMember(memberId);
         if (member == null) {
             throw new CommonException(ErrorCode.NOT_FOUND_USER);
@@ -54,7 +54,7 @@ public class MemberService {
      */
     @Transactional
     public MemberDetailResponse updateMember(final Long memberId, final MemberUpdateRequest request) {
-        // TODO: 로그인 연동 후 인증된 사용자(member_id)로 교체. 로그인 연동 전까지는 요청으로 회원 ID 를 받는다.
+        // memberId 는 컨트롤러에서 @UserId 로 주입된 인증된 사용자 ID 이다.
         if (request.getNickname() != null && request.getNickname().isBlank()) {
             throw new CommonException(ErrorCode.INVALID_ARGUMENT);
         }
@@ -78,7 +78,7 @@ public class MemberService {
      */
     @Transactional
     public void deleteMember(final Long memberId) {
-        // TODO: 로그인 연동 후 인증된 사용자(member_id)로 교체. 로그인 연동 전까지는 요청으로 회원 ID 를 받는다.
+        // memberId 는 컨트롤러에서 @UserId 로 주입된 인증된 사용자 ID 이다.
         // TODO: 관련 데이터(여행 참여 이력, 도감 등) 삭제/익명화 정책 확정 후 반영 (현재 기획상 미확정 — 회원 소프트 삭제만 처리)
         final int deleted = memberMapper.softDeleteMember(memberId);
         if (deleted == 0) {

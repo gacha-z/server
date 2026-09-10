@@ -1,5 +1,6 @@
 package dk.gatchaz.server.trip.controller;
 
+import dk.gatchaz.server.common.annotation.UserId;
 import dk.gatchaz.server.common.dto.ResponseDto;
 import dk.gatchaz.server.trip.dto.TripCreateRequest;
 import dk.gatchaz.server.trip.dto.TripCreateResponse;
@@ -48,8 +49,10 @@ public class TripController {
      */
     @Operation(summary = "여행 생성", description = "화면 입력값으로 여행을 생성하고 생성자를 OWNER 로 등록한다. 지역은 이 단계에서 선택하지 않으며(trip_region_id 는 NULL), 반환된 tripId 로 추천/리롤 후 지역 선택 API 를 호출한다.")
     @PostMapping
-    public ResponseDto<TripCreateResponse> createTrip(@Valid @RequestBody final TripCreateRequest request) {
-        return ResponseDto.created(tripService.createTrip(request));
+    public ResponseDto<TripCreateResponse> createTrip(
+            @UserId final Long memberId,
+            @Valid @RequestBody final TripCreateRequest request) {
+        return ResponseDto.created(tripService.createTrip(request, memberId));
     }
 
     /**
@@ -90,8 +93,7 @@ public class TripController {
             @RequestParam(required = false) final Long cursor,
             @Parameter(description = "한 번에 조회할 개수 (기본 10, 1~50 범위를 벗어나면 자동 보정)", example = "10")
             @RequestParam(required = false, defaultValue = "10") final int size,
-            @Parameter(description = "조회 기준 회원 ID. 로그인 연동 전까지 요청으로 받는 선택값이다.", example = "1")
-            @RequestParam(required = false) final Long memberId) {
+            @UserId final Long memberId) {
         final TripSearchRequest request =
                 new TripSearchRequest(title, tripRegionId, status, dateFrom, dateTo, cursor, size, memberId);
         return ResponseDto.ok(tripService.getTrips(request));
@@ -144,8 +146,9 @@ public class TripController {
     @PatchMapping("/{tripId}")
     public ResponseDto<TripDetailResponse> updateTrip(
             @Parameter(description = "수정할 여행 ID", example = "1") @PathVariable final Long tripId,
+            @UserId final Long requestMemberId,
             @Valid @RequestBody final TripUpdateRequest request) {
-        return ResponseDto.ok(tripService.updateTrip(tripId, request));
+        return ResponseDto.ok(tripService.updateTrip(tripId, request, requestMemberId));
     }
 
     /**
@@ -188,8 +191,7 @@ public class TripController {
     public ResponseDto<Void> kickTripMember(
             @Parameter(description = "여행 ID", example = "1") @PathVariable final Long tripId,
             @Parameter(description = "강퇴할 팀원 회원 ID", example = "2") @PathVariable final Long memberId,
-            @Parameter(description = "요청자(방장) 회원 ID. 로그인 연동 전까지 요청으로 받는다.", example = "1")
-            @RequestParam final Long requestMemberId) {
+            @UserId final Long requestMemberId) {
         tripService.kickTripMember(tripId, memberId, requestMemberId);
         return ResponseDto.<Void>ok(null);
     }
@@ -235,8 +237,10 @@ public class TripController {
      */
     @Operation(summary = "여행 참여", description = "초대 링크의 코드로 회원을 여행에 참여시킨다. 유효하지 않은 코드, 참여 불가 상태, 이미 참여 중, 정원 초과 시 실패한다. 이전에 나갔거나(LEFT) 강퇴된(KICKED) 회원도 다시 참여할 수 있다. (재참여 시 새 참여 이력 생성)")
     @PostMapping("/join")
-    public ResponseDto<TripJoinResponse> joinTrip(@Valid @RequestBody final TripJoinRequest request) {
-        return ResponseDto.ok(tripService.joinTrip(request.getCode(), request.getMemberId()));
+    public ResponseDto<TripJoinResponse> joinTrip(
+            @UserId final Long memberId,
+            @Valid @RequestBody final TripJoinRequest request) {
+        return ResponseDto.ok(tripService.joinTrip(request.getCode(), memberId));
     }
 
     /**
@@ -262,8 +266,7 @@ public class TripController {
             @Parameter(description = "여행 ID", example = "1") @PathVariable final Long tripId,
             @Parameter(description = "방장을 위임받을 팀원 회원 ID", example = "2")
             @RequestParam final Long newOwnerMemberId,
-            @Parameter(description = "요청자(현재 방장) 회원 ID. 로그인 연동 전까지 요청으로 받는다.", example = "1")
-            @RequestParam final Long requestMemberId) {
+            @UserId final Long requestMemberId) {
         tripService.transferTripOwner(tripId, newOwnerMemberId, requestMemberId);
         return ResponseDto.<Void>ok(null);
     }
@@ -292,8 +295,7 @@ public class TripController {
     @PostMapping("/{tripId}/leave")
     public ResponseDto<Void> leaveTrip(
             @Parameter(description = "나갈 여행 ID", example = "1") @PathVariable final Long tripId,
-            @Parameter(description = "나가는 회원 ID. 로그인 연동 전까지 요청으로 받는다.", example = "2")
-            @RequestParam final Long memberId) {
+            @UserId final Long memberId) {
         tripService.leaveTrip(tripId, memberId);
         return ResponseDto.<Void>ok(null);
     }
@@ -319,8 +321,7 @@ public class TripController {
     @PatchMapping("/{tripId}/cancel")
     public ResponseDto<Void> cancelTrip(
             @Parameter(description = "취소할 여행 ID", example = "1") @PathVariable final Long tripId,
-            @Parameter(description = "요청자(방장) 회원 ID. 로그인 연동 전까지 요청으로 받는다.", example = "1")
-            @RequestParam final Long requestMemberId) {
+            @UserId final Long requestMemberId) {
         tripService.cancelTrip(tripId, requestMemberId);
         return ResponseDto.<Void>ok(null);
     }

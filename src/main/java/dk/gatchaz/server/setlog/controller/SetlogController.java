@@ -1,5 +1,6 @@
 package dk.gatchaz.server.setlog.controller;
 
+import dk.gatchaz.server.common.annotation.UserId;
 import dk.gatchaz.server.common.dto.ResponseDto;
 import dk.gatchaz.server.setlog.dto.SetlogDownloadResponse;
 import dk.gatchaz.server.setlog.dto.SetlogResponse;
@@ -50,8 +51,7 @@ public class SetlogController {
     public ResponseDto<SetlogUploadResponse> uploadSetlog(
             @Parameter(description = "여행 ID", example = "1") @RequestParam final Long tripId,
             @Parameter(description = "진행 미션(trip_mission) ID", example = "1") @RequestParam final Long tripMissionId,
-            @Parameter(description = "촬영한 회원 ID. 로그인 연동 전까지 요청으로 받는다.", example = "1")
-            @RequestParam final Long memberId,
+            @UserId final Long memberId,
             @Parameter(description = "업로드할 영상 파일 (mp4/mov, 최대 100MB)")
             @RequestParam("file") final MultipartFile file) {
         return ResponseDto.created(setlogService.uploadSetlog(tripId, tripMissionId, memberId, file));
@@ -84,8 +84,7 @@ public class SetlogController {
     @GetMapping("/setlogs/{setlogId}/download")
     public ResponseDto<SetlogDownloadResponse> downloadSetlog(
             @Parameter(description = "셋로그 ID", example = "1") @PathVariable final Long setlogId,
-            @Parameter(description = "다운로드를 요청한 회원 ID. 로그인 연동 전까지 요청으로 받는다.", example = "1")
-            @RequestParam final Long memberId) {
+            @UserId final Long memberId) {
         return ResponseDto.ok(setlogService.downloadSetlog(setlogId, memberId));
     }
 }

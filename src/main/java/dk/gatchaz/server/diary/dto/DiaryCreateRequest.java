@@ -20,11 +20,6 @@ public class DiaryCreateRequest {
     @NotNull
     private Long tripId;
 
-    /** 작성자 회원 ID. (필수, diary.member_id 는 NOT NULL) 로그인 연동 전까지 요청으로 받는다. */
-    @Schema(description = "작성자 회원 ID (필수). 로그인 연동 전까지 요청으로 받는다.", example = "1")
-    @NotNull
-    private Long memberId;
-
     /** 저장할 일기 본문. 직접 작성한 내용 또는 /generate 로 받은 AI 초안. */
     @Schema(description = "저장할 일기 본문. 직접 작성 내용 또는 /generate 로 받은 AI 초안.", example = "안목해변에서 커피 마시고 노을 봄. 친구랑 오랜만에 수다 떨어서 좋았음")
     private String content;

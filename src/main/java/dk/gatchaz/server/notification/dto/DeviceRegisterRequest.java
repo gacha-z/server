@@ -2,7 +2,6 @@ package dk.gatchaz.server.notification.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -15,10 +14,6 @@ import lombok.Setter;
 @NoArgsConstructor
 @Schema(description = "기기 등록/갱신 요청")
 public class DeviceRegisterRequest {
-
-    @Schema(description = "기기 소유 회원 ID. 로그인 연동 전까지 요청으로 받는다.", example = "1")
-    @NotNull(message = "memberId 는 필수입니다.")
-    private Long memberId;
 
     @Schema(description = "FCM 등록 토큰", example = "fMEP0vJq...")
     @NotBlank(message = "fcmToken 은 필수입니다.")

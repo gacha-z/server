@@ -159,7 +159,8 @@ public class MissionService {
      *    인증에 성공하면 이력을 기록하고 완료 처리한다. 실패하면 예외를 던지고 진행 중 상태를 유지한다(재시도 가능).
      */
     @Transactional
-    public void completeMission(final Long tripId, final Long tripMissionId, final MissionCompleteRequest request) {
+    public void completeMission(final Long tripId, final Long tripMissionId, final MissionCompleteRequest request,
+                                 final Long memberId) {
         // 1. 진행 중인 미션인지 확인
         if (missionMapper.existsInProgressTripMission(tripId, tripMissionId) == 0) {
             throw new CommonException(ErrorCode.NOT_FOUND_TRIP_MISSION);
@@ -177,7 +178,7 @@ public class MissionService {
         final TripRegionCoordinate region = missionMapper.selectTripRegionCoordinate(tripId);
         if (region == null || region.getLatitude() == null || region.getLongitude() == null) {
             locationVerificationRecorder.record(
-                    tripId, tripMissionId, request.getMemberId(),
+                    tripId, tripMissionId, memberId,
                     request.getLatitude(), request.getLongitude(), null, false);
             throw new CommonException(ErrorCode.LOCATION_VERIFICATION_FAILED);
         }
@@ -186,7 +187,7 @@ public class MissionService {
                 region.getLatitude(), region.getLongitude(), request.getLatitude(), request.getLongitude());
         final boolean success = distanceMeter <= LOCATION_VERIFICATION_RADIUS_METER;
         locationVerificationRecorder.record(
-                tripId, tripMissionId, request.getMemberId(),
+                tripId, tripMissionId, memberId,
                 request.getLatitude(), request.getLongitude(), BigDecimal.valueOf(distanceMeter), success);
         if (!success) {
             throw new CommonException(ErrorCode.LOCATION_VERIFICATION_FAILED);

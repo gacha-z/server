@@ -37,11 +37,11 @@ public class DiaryService {
      * trip_id / member_id 는 필수(요청값), status 는 'ACTIVE'(INSERT 쿼리), visibility 미지정 시 TEAM 으로 보정한다.
      */
     @Transactional
-    public DiaryDetailResponse createDiary(final DiaryCreateRequest request) {
+    public DiaryDetailResponse createDiary(final DiaryCreateRequest request, final Long memberId) {
         // 저장 전용: content(직접 작성 또는 /generate 로 받은 AI 초안)를 그대로 저장한다.
         // AI 초안을 저장하는 경우 요청의 isAiGenerated=true 로 받아 'Y' 로 기록한다. (생성 로직은 /generate 담당)
         // 회원 기준 하루 1개 제한: 같은 회원이 같은 날짜에 (삭제되지 않은) 일기가 이미 있으면 실패.
-        if (diaryMapper.countActiveDiaryByMemberAndDate(request.getMemberId(), request.getDiaryDate()) > 0) {
+        if (diaryMapper.countActiveDiaryByMemberAndDate(memberId, request.getDiaryDate()) > 0) {
             throw new CommonException(ErrorCode.ALREADY_EXISTS_DIARY_DATE);
         }
 
@@ -52,7 +52,7 @@ public class DiaryService {
 
         final DiaryCreateParam param = DiaryCreateParam.builder()
                 .tripId(request.getTripId())
-                .memberId(request.getMemberId())
+                .memberId(memberId)
                 .content(request.getContent())
                 .diaryDate(request.getDiaryDate())
                 .visibility(visibility)
@@ -70,7 +70,7 @@ public class DiaryService {
         // 같은 여행 팀원에게 알림을 보내기 위한 이벤트. 이 트랜잭션이 커밋된 뒤 별도 스레드에서 처리된다.
         // (저장이 롤백되면 알림도 나가지 않고, 알림 발송이 이 API 응답을 늦추지 않는다)
         eventPublisher.publishEvent(new DiaryCreatedEvent(
-                param.getDiaryId(), request.getTripId(), request.getMemberId(), diaryVisibility));
+                param.getDiaryId(), request.getTripId(), memberId, diaryVisibility));
 
         return diaryMapper.selectDiary(param.getDiaryId());
     }

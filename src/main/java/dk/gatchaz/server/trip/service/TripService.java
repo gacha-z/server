@@ -50,10 +50,8 @@ public class TripService {
      * 2. 생성자(owner)를 member_rel_trip 에 OWNER 로 등록한다.
      */
     @Transactional
-    public TripCreateResponse createTrip(final TripCreateRequest request) {
-        // TODO: 로그인 연동 후 인증된 사용자(member_id)로 교체. 로그인 연동 전까지는 요청으로 owner 회원 ID 를 받는다.
-        // final Long ownerMemberId = AuthUtil.getCurrentMemberId();
-        final Long ownerMemberId = request.getMemberId();
+    public TripCreateResponse createTrip(final TripCreateRequest request, final Long ownerMemberId) {
+        // ownerMemberId 는 컨트롤러에서 @UserId 로 주입된 인증된 사용자 ID 이다.
 
         // 첫 미션 시각(시·분)을 여행 시작일과 합쳐 저장용 일시로 가공
         final LocalDateTime missionStartAt = LocalDateTime.of(request.getStartDate(), request.getMissionStartTime());
@@ -87,7 +85,7 @@ public class TripService {
      */
     @Transactional(readOnly = true)
     public TripListResponse getTrips(final TripSearchRequest request) {
-        // TODO: 로그인 연동 후 인증된 사용자(member_id)로 교체. 로그인 연동 전까지는 요청으로 조회 기준 회원 ID 를 받는다.
+        // memberId 는 컨트롤러에서 @UserId 로 주입된 인증된 사용자 ID 이다.
         final Long memberId = request.getMemberId();
 
         // size 범위 보정 (1~50)
@@ -133,15 +131,15 @@ public class TripService {
      * 3. 시작일 또는 미션 시작 시각이 바뀌면 첫 미션 일시를 "최종 시작일 + 최종 시각"으로 재계산한다.
      */
     @Transactional
-    public TripDetailResponse updateTrip(final Long tripId, final TripUpdateRequest request) {
-        // TODO: 로그인 연동 후 인증된 사용자(member_id)로 교체. 로그인 연동 전까지는 요청으로 방장 회원 ID 를 받는다.
+    public TripDetailResponse updateTrip(final Long tripId, final TripUpdateRequest request, final Long requestMemberId) {
+        // requestMemberId 는 컨트롤러에서 @UserId 로 주입된 인증된 사용자 ID 이다.
 
         // 1. 현재 여행 조회 (존재 확인 + 방장 확인 + 미변경 필드의 기존 값 확보)
         final TripDetailResponse current = tripMapper.selectTrip(tripId);
         if (current == null) {
             throw new CommonException(ErrorCode.NOT_FOUND_TRIP);
         }
-        if (!current.getOwnerMemberId().equals(request.getRequestMemberId())) {
+        if (!current.getOwnerMemberId().equals(requestMemberId)) {
             throw new CommonException(ErrorCode.NOT_TRIP_OWNER);
         }
 
@@ -210,7 +208,7 @@ public class TripService {
      */
     @Transactional
     public void kickTripMember(final Long tripId, final Long memberId, final Long requestMemberId) {
-        // TODO: 로그인 연동 후 인증된 사용자(member_id)로 교체. 로그인 연동 전까지는 요청으로 방장 회원 ID 를 받는다.
+        // requestMemberId 는 컨트롤러에서 @UserId 로 주입된 인증된 사용자 ID 이다.
 
         // 1. 여행 존재 + 방장 확인
         final Long ownerMemberId = tripMapper.selectTripOwnerMemberId(tripId);
@@ -242,7 +240,7 @@ public class TripService {
      */
     @Transactional
     public void leaveTrip(final Long tripId, final Long memberId) {
-        // TODO: 로그인 연동 후 인증된 사용자(member_id)로 교체. 로그인 연동 전까지는 요청으로 회원 ID 를 받는다.
+        // memberId 는 컨트롤러에서 @UserId 로 주입된 인증된 사용자 ID 이다.
 
         final Long ownerMemberId = tripMapper.selectTripOwnerMemberId(tripId);
         if (ownerMemberId == null) {
@@ -283,7 +281,7 @@ public class TripService {
      */
     @Transactional
     public void transferTripOwner(final Long tripId, final Long newOwnerMemberId, final Long requestMemberId) {
-        // TODO: 로그인 연동 후 인증된 사용자(member_id)로 교체. 로그인 연동 전까지는 요청으로 방장 회원 ID 를 받는다.
+        // requestMemberId 는 컨트롤러에서 @UserId 로 주입된 인증된 사용자 ID 이다.
 
         // 1. 여행 존재 + 방장 확인
         final Long ownerMemberId = tripMapper.selectTripOwnerMemberId(tripId);
@@ -316,7 +314,7 @@ public class TripService {
      */
     @Transactional
     public void cancelTrip(final Long tripId, final Long requestMemberId) {
-        // TODO: 로그인 연동 후 인증된 사용자(member_id)로 교체. 로그인 연동 전까지는 요청으로 방장 회원 ID 를 받는다.
+        // requestMemberId 는 컨트롤러에서 @UserId 로 주입된 인증된 사용자 ID 이다.
 
         // 1. 여행 존재 + 방장 확인
         final Long ownerMemberId = tripMapper.selectTripOwnerMemberId(tripId);

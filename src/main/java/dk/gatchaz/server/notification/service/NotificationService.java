@@ -68,10 +68,10 @@ public class NotificationService {
      * (기기를 재설치하거나 다른 계정으로 로그인해도 토큰이 같으면 같은 기기로 본다)
      */
     @Transactional
-    public DeviceRegisterResponse registerDevice(final DeviceRegisterRequest request) {
+    public DeviceRegisterResponse registerDevice(final DeviceRegisterRequest request, final Long memberId) {
         final DeviceSaveParam param = DeviceSaveParam.builder()
                 .deviceId(notificationMapper.selectDeviceIdByFcmToken(request.getFcmToken()))
-                .memberId(request.getMemberId())
+                .memberId(memberId)
                 .fcmToken(request.getFcmToken())
                 .osType(request.getOsType())
                 .appVersion(request.getAppVersion())
