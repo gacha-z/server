@@ -2,6 +2,7 @@ package dk.gatchaz.server.trip.service;
 
 import dk.gatchaz.server.exception.CommonException;
 import dk.gatchaz.server.exception.ErrorCode;
+import dk.gatchaz.server.notification.event.TripCancelledEvent;
 import dk.gatchaz.server.trip.dto.TripCreateParam;
 import dk.gatchaz.server.trip.dto.TripCreateRequest;
 import dk.gatchaz.server.trip.dto.TripCreateResponse;
@@ -22,6 +23,7 @@ import dk.gatchaz.server.trip.support.InviteCodeGenerator;
 import dk.gatchaz.server.type.ETripMemberRole;
 import dk.gatchaz.server.type.ETripStatus;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,6 +40,7 @@ public class TripService {
 
     private final TripMapper tripMapper;
     private final InviteCodeGenerator inviteCodeGenerator;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 화면 입력값으로 여행을 생성한다. 지역은 이 단계에서 선택하지 않으므로 trip_region_id 는 비워둔다.
@@ -329,6 +332,10 @@ public class TripService {
         if (cancelled == 0) {
             throw new CommonException(ErrorCode.TRIP_NOT_CANCELLABLE);
         }
+
+        // 여행 기록/미션 수행 이력은 그대로 남기되, 이 여행에서 오른 배지 진행도는 되돌려야 한다.
+        // (완료 때만 지급되는 여행 횟수/지역별/지역 탐험 배지·아이템은 취소로는 지급된 적이 없어 되돌릴 게 없다)
+        eventPublisher.publishEvent(new TripCancelledEvent(tripId));
     }
 
     /**

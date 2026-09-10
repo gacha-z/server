@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dk.gatchaz.server.collection.mapper.CollectionMapper">
+
+    <select id="selectItems" resultType="dk.gatchaz.server.collection.dto.CollectionItemResponse">
+        SELECT
+            ci.collection_item_id AS collectionItemId,
+            rg.region_group_code AS regionGroupCode,
+            rg.region_group_name AS regionGroupName,
+            ci.item_name AS itemName,
+            ci.item_type AS itemType,
+            ci.image_url AS imageUrl,
+            ci.description AS description,
+            CASE WHEN mrci.rel_id IS NULL THEN 'N' ELSE 'Y' END AS acquiredYn,
+            mrci.created_at AS acquiredAt
+        FROM collection_item ci
+        JOIN region_group rg ON rg.region_group_id = ci.region_group_id
+        LEFT JOIN member_rel_collection_item mrci
+            ON mrci.collection_item_id = ci.collection_item_id
+            AND mrci.member_id = #{memberId}
+        WHERE ci.use_yn = 'Y'
+        ORDER BY rg.sort_order ASC
+    </select>
+
+    <select id="selectBadges" resultType="dk.gatchaz.server.collection.dto.BadgeResponse">
+        SELECT
+            b.badge_id AS badgeId,
+            b.badge_group AS badgeGroup,
+            b.badge_code AS badgeCode,
+            b.badge_name AS badgeName,
+            b.description AS description,
+            b.target_count AS targetCount,
+            COALESCE(mrb.current_count, 0) AS currentCount,
+            COALESCE(mrb.achieved_yn, 'N') AS achievedYn,
+            mrb.achieved_at AS achievedAt
+        FROM badge b
+        LEFT JOIN member_rel_badge mrb
+            ON mrb.badge_id = b.badge_id
+            AND mrb.member_id = #{memberId}
+        WHERE b.use_yn = 'Y'
+        ORDER BY b.badge_id ASC
+    </select>
+
+    <select id="selectCollectionItemIdByRegionGroup" resultType="java.lang.Long">
+        SELECT
+            collection_item_id
+        FROM collection_item
+        WHERE region_group_id = #{regionGroupId}
+          AND use_yn = 'Y'
+        LIMIT 1
+    </select>
+
+    <select id="existsMemberItem" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM member_rel_collection_item
+        WHERE member_id = #{memberId}
+          AND collection_item_id = #{collectionItemId}
+    </select>
+
+    <insert id="insertMemberItem">
+        INSERT INTO
+            member_rel_collection_item(
+                member_id,
+                collection_item_id,
+                trip_id,
+                created_at
+            )
+        VALUES (
+                   #{memberId},
+                   #{collectionItemId},
+                   #{tripId},
+                   NOW()
+               )
+    </insert>
+
+    <select id="selectBadgeMetaByCode" resultType="dk.gatchaz.server.collection.dto.BadgeMeta">
+        SELECT
+            badge_id AS badgeId,
+            target_count AS targetCount
+        FROM badge
+        WHERE badge_code = #{badgeCode}
+          AND use_yn = 'Y'
+    </select>
+
+    <select id="selectMemberBadgeProgress" resultType="dk.gatchaz.server.collection.dto.MemberBadgeProgress">
+        SELECT
+            current_count AS currentCount,
+            achieved_yn AS achievedYn,
+            achieved_at AS achievedAt
+        FROM member_rel_badge
+        WHERE member_id = #{memberId}
+          AND badge_id = #{badgeId}
+    </select>
+
+    <insert id="insertMemberBadgeProgress">
+        INSERT INTO
+            member_rel_badge(
+                member_id,
+                badge_id,
+                current_count,
+                achieved_yn,
+                achieved_at,
+                created_at,
+                updated_at
+            )
+        VALUES (
+                   #{memberId},
+                   #{badgeId},
+                   #{currentCount},
+                   #{achievedYn},
+                   #{achievedAt},
+                   NOW(),
+                   NOW()
+               )
+    </insert>
+
+    <update id="updateMemberBadgeProgress">
+        UPDATE
+            member_rel_badge
+        SET
+            current_count = #{currentCount},
+            achieved_yn = #{achievedYn},
+            achieved_at = #{achievedAt},
+            updated_at = NOW()
+        WHERE
+            member_id = #{memberId}
+            AND badge_id = #{badgeId}
+    </update>
+
+    <select id="selectJoinedMemberIds" resultType="java.lang.Long">
+        SELECT
+            member_id
+        FROM member_rel_trip
+        WHERE trip_id = #{tripId}
+          AND status = 'JOINED'
+    </select>
+
+    <select id="selectRegionGroupInfoByTrip" resultType="dk.gatchaz.server.collection.dto.TripRegionGroupInfo">
+        SELECT
+            rg.region_group_id AS regionGroupId,
+            rg.region_group_code AS regionGroupCode
+        FROM trip t
+        INNER JOIN trip_region tr ON tr.trip_region_id = t.trip_region_id
+        INNER JOIN region_group rg ON rg.region_group_id = tr.region_group_id
+        WHERE t.trip_id = #{tripId}
+    </select>
+
+    <select id="selectRegionVisitCounts" resultType="dk.gatchaz.server.collection.dto.RegionVisitCount">
+        SELECT
+            rg.region_group_id AS regionGroupId,
+            COUNT(*) AS visitCount
+        FROM member_rel_trip mrt
+        INNER JOIN trip t ON t.trip_id = mrt.trip_id
+        INNER JOIN trip_region tr ON tr.trip_region_id = t.trip_region_id
+        INNER JOIN region_group rg ON rg.region_group_id = tr.region_group_id
+        WHERE mrt.member_id = #{memberId}
+          AND mrt.status = 'JOINED'
+          AND t.status = 'COMPLETED'
+        GROUP BY rg.region_group_id
+    </select>
+
+    <select id="countCompletedMissionsByTrip" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM trip_mission
+        WHERE trip_id = #{tripId}
+          AND status = 'COMPLETED'
+    </select>
+
+    <select id="countCompletedMissionsByTripAndType" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM trip_mission tm
+        INNER JOIN mission m ON m.mission_id = tm.mission_id
+        WHERE tm.trip_id = #{tripId}
+          AND tm.status = 'COMPLETED'
+          AND m.mission_type = #{missionType}
+    </select>
+
+    <select id="selectDiaryCountsByTrip" resultType="dk.gatchaz.server.collection.dto.MemberDiaryCount">
+        SELECT
+            member_id AS memberId,
+            COUNT(*) AS diaryCount
+        FROM diary
+        WHERE trip_id = #{tripId}
+        GROUP BY member_id
+    </select>
+
+</mapper>
