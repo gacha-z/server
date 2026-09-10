@@ -8,7 +8,7 @@ import java.util.Collections;
 
 /**
  * JWT 로 인증된(혹은 인증 시도 중인) 사용자를 나타내는 Authentication 구현체.
- * gatchaz 는 회원에 별도 권한(Role) 개념이 없으므로, principal 은 memberId(Long) 하나만 들고 다닌다.
+ * principal 은 memberId(Long) 하나만 들고 다니고, 권한(ROLE_USER/ROLE_ADMIN)은 GrantedAuthority 로 별도로 들고 다닌다.
  */
 public class JwtAuthenticationToken extends AbstractAuthenticationToken {
 

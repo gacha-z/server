@@ -26,6 +26,7 @@
             nickname,
             age,
             profile_image_url,
+            role,
             created_at,
             updated_at
         FROM member

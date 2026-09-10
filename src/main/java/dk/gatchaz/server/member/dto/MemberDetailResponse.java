@@ -1,5 +1,6 @@
 package dk.gatchaz.server.member.dto;
 
+import dk.gatchaz.server.type.ERole;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -27,6 +28,9 @@ public class MemberDetailResponse {
 
     @Schema(description = "프로필 이미지 URL. 설정하지 않았으면 null", example = "https://cdn.travelgatcha.app/profile/1.png")
     private String profileImageUrl;
+
+    @Schema(description = "시스템 권한", example = "USER")
+    private ERole role;
 
     @Schema(description = "생성 일시", example = "2026-08-01T10:00:00")
     private LocalDateTime createdAt;
