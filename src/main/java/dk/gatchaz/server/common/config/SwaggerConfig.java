@@ -1,4 +1,4 @@
-package dk.gatchaz.server.config;
+package dk.gatchaz.server.common.config;
 
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;

@@ -1,6 +1,6 @@
-package dk.gatchaz.server.dto;
+package dk.gatchaz.server.common.dto;
 
-import dk.gatchaz.server.exception.ErrorCode;
+import dk.gatchaz.server.common.exception.ErrorCode;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;

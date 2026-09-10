@@ -1,4 +1,4 @@
-package dk.gatchaz.server.exception;
+package dk.gatchaz.server.common.exception;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

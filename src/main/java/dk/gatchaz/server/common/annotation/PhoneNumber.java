@@ -1,4 +1,4 @@
-package dk.gatchaz.server.annotation;
+package dk.gatchaz.server.common.annotation;
 
 import jakarta.validation.Constraint;
 import jakarta.validation.Payload;

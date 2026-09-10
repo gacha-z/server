@@ -1,4 +1,4 @@
-package dk.gatchaz.server.exception;
+package dk.gatchaz.server.common.exception;
 
 public class CommonException extends RuntimeException {
     private final ErrorCode errorCode;

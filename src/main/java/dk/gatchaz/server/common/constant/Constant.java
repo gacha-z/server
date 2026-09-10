@@ -1,4 +1,4 @@
-package dk.gatchaz.server.constant;
+package dk.gatchaz.server.common.constant;
 
 import java.util.List;
 
