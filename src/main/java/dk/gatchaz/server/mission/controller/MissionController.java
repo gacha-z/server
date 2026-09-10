@@ -121,7 +121,7 @@ public class MissionController {
             description = """
                     미션 후보(missionCandidateId) 하나를 새 미션으로 교체한다. 후보당 1회만 가능하다.
 
-                    - 기존 후보는 비활성화되지만(rerolled_yn=true) mission_id 는 바뀌지 않아 이력이 보존된다.
+                    - 기존 후보는 비활성화되지만(rerolled_yn='Y') mission_id 는 바뀌지 않아 이력이 보존된다.
                     - 새로 뽑히는 미션은 방금 버린 미션과 다르며(즉시 중복 방지), 이 여행에서 아직 선택된 적 없는 미션이다.
                     - 리롤로 새로 생긴 후보는 다시 리롤할 수 없다.
 

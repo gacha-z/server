@@ -36,6 +36,6 @@ public class MissionCandidateResponse {
     @Schema(description = "선택 여부 (Y/N)", example = "N")
     private String selectedYn;
 
-    @Schema(description = "리롤되어 교체된(비활성) 후보인지 여부. true 면 이미 리롤되어 더 이상 유효하지 않다.", example = "false")
-    private Boolean rerolledYn;
+    @Schema(description = "리롤되어 교체된(비활성) 후보인지 여부 (Y/N). Y 면 이미 리롤되어 더 이상 유효하지 않다.", example = "N")
+    private String rerolledYn;
 }
