@@ -47,7 +47,8 @@ CREATE TABLE `trip_region` (
 	`longitude`	DECIMAL(10,7)	NULL,
 	`use_yn`	CHAR(1)	NULL	DEFAULT 'Y',
 	`created_at`	DATETIME	NULL,
-	`image_url`	VARCHAR(255)	NULL	COMMENT '지역 대표 이미지'
+	`image_url`	VARCHAR(255)	NULL	COMMENT '지역 대표 이미지',
+	`region_group_id`	BIGINT	NULL	COMMENT '소속 지역 그룹 (도감 아이템 지급 단위)'
 );
 
 CREATE TABLE `trip_invite` (
@@ -138,15 +139,46 @@ CREATE TABLE `mission` (
 	`created_at`	DATETIME	NULL
 );
 
+CREATE TABLE `region_group` (
+	`region_group_id`	BIGINT	NOT NULL,
+	`region_group_code`	VARCHAR(30)	NOT NULL,
+	`region_group_name`	VARCHAR(50)	NOT NULL,
+	`sort_order`	INT	NULL,
+	`created_at`	DATETIME	NULL
+);
+
 CREATE TABLE `collection_item` (
 	`collection_item_id`	BIGINT	NOT NULL,
-	`region_id`	BIGINT	NOT NULL,
+	`region_group_id`	BIGINT	NOT NULL,
 	`item_name`	VARCHAR(100)	NULL,
 	`item_type`	VARCHAR(30)	NULL,
 	`image_url`	VARCHAR(500)	NULL,
 	`description`	TEXT	NULL,
 	`use_yn`	CHAR(1)	NULL	DEFAULT 'Y',
 	`created_at`	DATETIME	NULL
+);
+
+CREATE TABLE `badge` (
+	`badge_id`	BIGINT	NOT NULL,
+	`badge_group`	VARCHAR(30)	NULL	COMMENT '배지 분류 (TRIP_COUNT/REGION_EXPLORE/REGION_SPECIFIC/MISSION_SUCCESS/DIARY/FOOD/CAFE)',
+	`badge_code`	VARCHAR(50)	NOT NULL,
+	`badge_name`	VARCHAR(100)	NULL,
+	`description`	VARCHAR(255)	NULL,
+	`target_count`	INT	NULL	COMMENT '달성 기준 횟수',
+	`image_url`	VARCHAR(500)	NULL,
+	`use_yn`	CHAR(1)	NULL	DEFAULT 'Y',
+	`created_at`	DATETIME	NULL
+);
+
+CREATE TABLE `member_rel_badge` (
+	`rel_id`	BIGINT	NOT NULL,
+	`member_id`	BIGINT	NOT NULL,
+	`badge_id`	BIGINT	NOT NULL,
+	`current_count`	INT	NOT NULL	DEFAULT 0,
+	`achieved_yn`	CHAR(1)	NOT NULL	DEFAULT 'N',
+	`achieved_at`	DATETIME	NULL,
+	`created_at`	DATETIME	NULL,
+	`updated_at`	DATETIME	NULL
 );
 
 CREATE TABLE `device` (
@@ -314,6 +346,19 @@ ALTER TABLE `trip` ADD CONSTRAINT `UK_TRIP_INVITE_CODE` UNIQUE (
 	`invite_code`
 );
 
+ALTER TABLE `region_group` ADD CONSTRAINT `UK_REGION_GROUP_CODE` UNIQUE (
+	`region_group_code`
+);
+
+ALTER TABLE `badge` ADD CONSTRAINT `UK_BADGE_CODE` UNIQUE (
+	`badge_code`
+);
+
+ALTER TABLE `member_rel_badge` ADD CONSTRAINT `UK_MEMBER_REL_BADGE_MEMBER_BADGE` UNIQUE (
+	`member_id`,
+	`badge_id`
+);
+
 ALTER TABLE `policy` ADD CONSTRAINT `PK_POLICY` PRIMARY KEY (
 	`policy_id`
 );
@@ -364,6 +409,18 @@ ALTER TABLE `mission` ADD CONSTRAINT `PK_MISSION` PRIMARY KEY (
 
 ALTER TABLE `collection_item` ADD CONSTRAINT `PK_COLLECTION_ITEM` PRIMARY KEY (
 	`collection_item_id`
+);
+
+ALTER TABLE `region_group` ADD CONSTRAINT `PK_REGION_GROUP` PRIMARY KEY (
+	`region_group_id`
+);
+
+ALTER TABLE `badge` ADD CONSTRAINT `PK_BADGE` PRIMARY KEY (
+	`badge_id`
+);
+
+ALTER TABLE `member_rel_badge` ADD CONSTRAINT `PK_MEMBER_REL_BADGE` PRIMARY KEY (
+	`rel_id`
 );
 
 ALTER TABLE `device` ADD CONSTRAINT `PK_DEVICE` PRIMARY KEY (
@@ -459,7 +516,12 @@ ALTER TABLE `mission_daily_goal` ADD CONSTRAINT `FK_MISSION_DAILY_GOAL_TRIP` FOR
 
 ALTER TABLE `mission` ADD CONSTRAINT `FK_MISSION_TRIP_REGION` FOREIGN KEY (`region_id`) REFERENCES `trip_region` (`trip_region_id`);
 
-ALTER TABLE `collection_item` ADD CONSTRAINT `FK_COLLECTION_ITEM_TRIP_REGION` FOREIGN KEY (`region_id`) REFERENCES `trip_region` (`trip_region_id`);
+ALTER TABLE `trip_region` ADD CONSTRAINT `FK_TRIP_REGION_REGION_GROUP` FOREIGN KEY (`region_group_id`) REFERENCES `region_group` (`region_group_id`);
+
+ALTER TABLE `collection_item` ADD CONSTRAINT `FK_COLLECTION_ITEM_REGION_GROUP` FOREIGN KEY (`region_group_id`) REFERENCES `region_group` (`region_group_id`);
+
+ALTER TABLE `member_rel_badge` ADD CONSTRAINT `FK_MEMBER_REL_BADGE_MEMBER` FOREIGN KEY (`member_id`) REFERENCES `member` (`member_id`);
+ALTER TABLE `member_rel_badge` ADD CONSTRAINT `FK_MEMBER_REL_BADGE_BADGE` FOREIGN KEY (`badge_id`) REFERENCES `badge` (`badge_id`);
 
 ALTER TABLE `device` ADD CONSTRAINT `FK_DEVICE_MEMBER` FOREIGN KEY (`member_id`) REFERENCES `member` (`member_id`);
 
