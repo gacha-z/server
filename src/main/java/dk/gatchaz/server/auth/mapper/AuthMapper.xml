@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dk.gatchaz.server.auth.mapper.AuthMapper">
+
+    <select id="selectSocialAccount" resultType="dk.gatchaz.server.auth.dto.SocialAccountResponse">
+        SELECT
+            social_account_id,
+            member_id,
+            provider,
+            provider_user_id,
+            email,
+            created_at
+        FROM social_account
+        WHERE provider = #{provider}
+          AND provider_user_id = #{providerUserId}
+    </select>
+
+    <insert id="insertSocialAccount" useGeneratedKeys="true" keyProperty="socialAccountId" keyColumn="social_account_id">
+        INSERT INTO
+            social_account(
+                member_id,
+                provider,
+                provider_user_id,
+                email,
+                created_at
+            )
+        VALUES
+            (
+                #{memberId},
+                #{provider},
+                #{providerUserId},
+                #{email},
+                NOW()
+            )
+    </insert>
+
+    <insert id="insertRefreshToken" useGeneratedKeys="true" keyProperty="refreshTokenId" keyColumn="refresh_token_id">
+        INSERT INTO
+            refresh_token(
+                member_id,
+                token,
+                expires_at,
+                revoked_yn,
+                created_at
+            )
+        VALUES
+            (
+                #{memberId},
+                #{token},
+                #{expiresAt},
+                'N',
+                NOW()
+            )
+    </insert>
+
+    <select id="selectValidRefreshToken" resultType="dk.gatchaz.server.auth.dto.RefreshTokenResponse">
+        SELECT
+            refresh_token_id,
+            member_id,
+            token,
+            expires_at,
+            created_at
+        FROM refresh_token
+        WHERE token = #{token}
+          AND revoked_yn = 'N'
+          AND expires_at > NOW()
+    </select>
+
+    <update id="revokeRefreshToken">
+        UPDATE
+            refresh_token
+        SET
+            revoked_yn = 'Y'
+        WHERE
+            token = #{token}
+            AND revoked_yn = 'N'
+    </update>
+
+    <update id="revokeAllRefreshTokensByMember">
+        UPDATE
+            refresh_token
+        SET
+            revoked_yn = 'Y'
+        WHERE
+            member_id = #{memberId}
+            AND revoked_yn = 'N'
+    </update>
+
+</mapper>

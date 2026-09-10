@@ -59,8 +59,9 @@ tasks.named('processResources') {
 
 dependencies {
     /** Spring Boot starters **/
-//    implementation 'org.springframework.boot:spring-boot-starter-security'
-//    implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+    // 앱(모바일) 전용 로그인이라 OAuth2 인가 코드 교환용 spring-boot-starter-oauth2-client 는 불필요.
+    // Google/Apple 로 이미 발급받은 id_token 을 서버에서 직접 검증하고, 우리 자체 JWT 를 발급하는 방식만 쓴다.
+    implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-web-services'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
@@ -73,6 +74,8 @@ dependencies {
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
     runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
     implementation 'jakarta.xml.bind:jakarta.xml.bind-api:4.0.0'
+    // Apple identity token(JWK) 서명 검증용
+    implementation 'com.nimbusds:nimbus-jose-jwt:9.37.3'
 
     /** Lombok **/
     compileOnly 'org.projectlombok:lombok'
