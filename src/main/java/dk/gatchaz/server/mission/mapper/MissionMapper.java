@@ -6,6 +6,7 @@ import dk.gatchaz.server.mission.dto.MissionCandidateSelectionInfo;
 import dk.gatchaz.server.mission.dto.MissionInfo;
 import dk.gatchaz.server.mission.dto.MissionRerollInsertParam;
 import dk.gatchaz.server.mission.dto.MissionSelectParam;
+import dk.gatchaz.server.mission.dto.StaleDailyGoal;
 import dk.gatchaz.server.mission.dto.TripMissionSettingInfo;
 import dk.gatchaz.server.mission.dto.TripRegionCoordinate;
 import org.apache.ibatis.annotations.Mapper;
@@ -42,7 +43,7 @@ public interface MissionMapper {
     int countResolvedRounds(@Param("tripId") Long tripId, @Param("dayNo") int dayNo);
 
     /**
-     * 여행(tripId)의 특정 일자(dayNo), 특정 라운드(assignedOrder)의 활성 후보(rerolled_yn = false)를 조회한다.
+     * 여행(tripId)의 특정 일자(dayNo), 특정 라운드(assignedOrder)의 활성 후보(rerolled_yn = 'N')를 조회한다.
      * 아직 후보가 생성되지 않은 라운드면 빈 리스트를 반환한다.
      */
     List<MissionCandidateResponse> selectActiveCandidates(@Param("tripId") Long tripId,
@@ -61,7 +62,7 @@ public interface MissionMapper {
 
     /**
      * 새로 뽑힌 미션 목록을 해당 라운드(dayNo, assignedOrder)의 후보로 mission_candidate 에 저장한다.
-     * (selected_yn = 'N', rerolled_yn = false)
+     * (selected_yn = 'N', rerolled_yn = 'N')
      */
     int insertCandidates(@Param("tripId") Long tripId,
                           @Param("dayNo") int dayNo,
@@ -70,7 +71,7 @@ public interface MissionMapper {
 
     /**
      * 선택(select) 대상 후보(missionCandidateId)의 정보를 조회한다.
-     * 해당 여행(tripId)의 활성(rerolled_yn = false) + 미선택(selected_yn = 'N') 후보가 아니면 null.
+     * 해당 여행(tripId)의 활성(rerolled_yn = 'N') + 미선택(selected_yn = 'N') 후보가 아니면 null.
      */
     MissionCandidateSelectionInfo selectCandidateForSelection(@Param("tripId") Long tripId,
                                                                @Param("missionCandidateId") Long missionCandidateId);
@@ -109,6 +110,11 @@ public interface MissionMapper {
     TripRegionCoordinate selectTripRegionCoordinate(@Param("tripId") Long tripId);
 
     /**
+     * trip_mission 이 어떤 mission_type 의 미션인지 조회한다. (도감 배지 지급 판단용)
+     */
+    String selectMissionTypeByTripMission(@Param("tripMissionId") Long tripMissionId);
+
+    /**
      * 위치 인증 시도 이력을 location_verification_log 에 기록한다. (성공/실패 모두 기록)
      * 좌표를 비교할 수 없었던 경우(여행 지역 좌표 없음 등) distanceMeter 는 null 일 수 있다.
      */
@@ -133,15 +139,61 @@ public interface MissionMapper {
     int failTripMission(@Param("tripId") Long tripId, @Param("tripMissionId") Long tripMissionId);
 
     /**
+     * 여행(tripId)에서 목표 라운드 수(mission_daily_goal.target_round_count)가 아직 다 채워지지 않은
+     * (완료/실패로 끝난 라운드 수가 목표에 못 미치는) 날짜(day_no)의 개수를 센다. (여행 완료 판정용 - 0이어야
+     * 지금까지 시작한 모든 날짜가 남김없이 다 끝난 것이다)
+     */
+    int countUnresolvedDays(@Param("tripId") Long tripId);
+
+    // ------------------------------------------------------------------
+    // 지난 날짜 자동 마감 배치용 (MissionDailyCloseScheduler 에서만 사용)
+    // ------------------------------------------------------------------
+
+    /**
+     * 진행 중(status = 'CREATED')인 모든 여행을 통틀어, day_no 에 해당하는 달력 날짜가 이미 지났는데
+     * 목표 라운드 수를 다 못 채운 mission_daily_goal 을 전부 조회한다.
+     */
+    List<StaleDailyGoal> selectStaleDailyGoals();
+
+    /**
+     * 여행(tripId)의 특정 일자(dayNo)에 진행 중(IN_PROGRESS)인 trip_mission 을 전부 포기(FAILED) 처리한다.
+     * (그 라운드는 뽑아서 진행하다가 날짜가 넘어가도록 방치된 것이므로 포기로 간주한다)
+     */
+    int failInProgressTripMissionsForDay(@Param("tripId") Long tripId, @Param("dayNo") int dayNo);
+
+    /**
+     * 여행(tripId)의 특정 일자(dayNo)에 실제로 생성된 trip_mission 로우 수를 센다. (상태 무관, 전체)
+     * 목표 라운드 수 대비 몇 라운드가 아예 뽑히지도 못했는지 계산하는 데 쓰인다.
+     */
+    int countTripMissionsForDay(@Param("tripId") Long tripId, @Param("dayNo") int dayNo);
+
+    /**
+     * 후보로 뽑히지도 못한 채 날짜가 지나버린 라운드(assignedOrder)에 "미션 수행 안함"(NOT_PERFORMED) 기록을
+     * 남긴다. 실제로 후보로 노출된 적은 없지만, 이 여행에서 아직 선택되지 않은 미션 중 하나(missionId)를
+     * 배정해 "이 라운드는 진행되지 않았다"는 이력만 남긴다.
+     */
+    int insertNotPerformedTripMission(@Param("tripId") Long tripId,
+                                       @Param("dayNo") int dayNo,
+                                       @Param("assignedOrder") int assignedOrder,
+                                       @Param("missionId") Long missionId);
+
+    /**
+     * 여행(tripId)을 완료 처리한다. (status 'CREATED' -> 'COMPLETED')
+     * 마지막 날의 마지막 라운드 미션까지 완료/포기로 끝났을 때만 호출된다.
+     * 이미 완료/취소된 여행이면 0을 반환한다. (중복 호출에 안전)
+     */
+    int completeTrip(@Param("tripId") Long tripId);
+
+    /**
      * 리롤(reroll) 대상 후보(missionCandidateId)의 정보를 조회한다.
-     * 해당 여행(tripId)의 활성(rerolled_yn = false) + 미선택(selected_yn = 'N') + 리롤 가능(reroll_count > 0)
+     * 해당 여행(tripId)의 활성(rerolled_yn = 'N') + 미선택(selected_yn = 'N') + 리롤 가능(reroll_count > 0)
      * 후보가 아니면 null.
      */
     MissionCandidateRerollInfo selectCandidateForReroll(@Param("tripId") Long tripId,
                                                          @Param("missionCandidateId") Long missionCandidateId);
 
     /**
-     * 리롤 대상 후보(missionCandidateId)를 비활성화한다. (rerolled_yn false -> true, mission_id 는 그대로 유지해 이력을 보존한다)
+     * 리롤 대상 후보(missionCandidateId)를 비활성화한다. (rerolled_yn 'N' -> 'Y', mission_id 는 그대로 유지해 이력을 보존한다)
      * 리롤 가능 상태가 아니면(이미 선택/리롤되었거나 횟수 소진) 0을 반환한다.
      */
     int deactivateCandidateForReroll(@Param("tripId") Long tripId, @Param("missionCandidateId") Long missionCandidateId);
@@ -157,7 +209,7 @@ public interface MissionMapper {
 
     /**
      * 리롤로 새로 뽑힌 미션을 같은 라운드(dayNo, assignedOrder)의 활성 후보로 저장한다.
-     * (selected_yn = 'N', rerolled_yn = false, reroll_count = 0 - 다시 리롤할 수 없음)
+     * (selected_yn = 'N', rerolled_yn = 'N', reroll_count = 0 - 다시 리롤할 수 없음)
      * 생성된 mission_candidate_id 는 param.missionCandidateId 에 채워진다.
      */
     int insertRerolledCandidate(MissionRerollInsertParam param);

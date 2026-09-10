@@ -27,4 +27,7 @@ public class TripMissionSettingInfo {
 
     /** 첫 미션 받을 일시 */
     private LocalDateTime missionStartAt;
+
+    /** 여행 종료일 (마지막 날짜까지가 미션 진행 기간 - 여행 완료 판정에 사용) */
+    private LocalDateTime endDate;
 }

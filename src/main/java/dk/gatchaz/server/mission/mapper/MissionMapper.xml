@@ -9,7 +9,8 @@
             trip_region_id,
             mission_min,
             mission_max,
-            mission_start_at
+            mission_start_at,
+            end_date AS endDate
         FROM trip
         WHERE trip_id = #{tripId}
     </select>
@@ -45,7 +46,7 @@
         FROM trip_mission
         WHERE trip_id = #{tripId}
           AND day_no = #{dayNo}
-          AND status IN ('COMPLETED', 'FAILED')
+          AND status IN ('COMPLETED', 'FAILED', 'NOT_PERFORMED')
     </select>
 
     <select id="selectActiveCandidates" resultType="dk.gatchaz.server.mission.dto.MissionCandidateResponse">
@@ -64,7 +65,7 @@
         WHERE mc.trip_id = #{tripId}
           AND mc.day_no = #{dayNo}
           AND mc.assigned_order = #{assignedOrder}
-          AND mc.rerolled_yn = false
+          AND mc.rerolled_yn = 'N'
         ORDER BY mc.mission_candidate_id ASC
     </select>
 
@@ -106,7 +107,7 @@
                 #{assignedOrder},
                 #{missionId},
                 'N',
-                false,
+                'N',
                 1,
                 NOW()
             )
@@ -129,7 +130,7 @@
         WHERE mc.trip_id = #{tripId}
           AND mc.mission_candidate_id = #{missionCandidateId}
           AND mc.selected_yn = 'N'
-          AND mc.rerolled_yn = false
+          AND mc.rerolled_yn = 'N'
     </select>
 
     <update id="markCandidateSelected">
@@ -201,6 +202,15 @@
         WHERE t.trip_id = #{tripId}
     </select>
 
+    <select id="selectMissionTypeByTripMission" resultType="java.lang.String">
+        SELECT
+            m.mission_type
+        FROM trip_mission tm
+        INNER JOIN mission m
+            ON m.mission_id = tm.mission_id
+        WHERE tm.trip_mission_id = #{tripMissionId}
+    </select>
+
     <insert id="insertLocationVerificationLog">
         INSERT INTO
             location_verification_log(
@@ -252,6 +262,104 @@
             AND status = 'IN_PROGRESS'
     </update>
 
+    <!-- 목표 라운드 수를 다 못 채운(target_round_count > 완료/실패로 끝난 라운드 수) 날짜 개수. 0이면
+         지금까지 시작한 모든 날짜가 남김없이 다 끝난 것이다. (여행 완료 판정용) -->
+    <select id="countUnresolvedDays" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM mission_daily_goal mdg
+        WHERE mdg.trip_id = #{tripId}
+          AND mdg.target_round_count > (
+              SELECT COUNT(*)
+              FROM trip_mission tm
+              WHERE tm.trip_id = mdg.trip_id
+                AND tm.day_no = mdg.day_no
+                AND tm.status IN ('COMPLETED', 'FAILED', 'NOT_PERFORMED')
+          )
+    </select>
+
+    <!-- 진행 중인 모든 여행을 통틀어, day_no 의 달력 날짜가 이미 지났는데 목표 라운드 수를 다 못 채운
+         mission_daily_goal 을 조회한다. (매일 자동 마감 배치용) -->
+    <select id="selectStaleDailyGoals" resultType="dk.gatchaz.server.mission.dto.StaleDailyGoal">
+        SELECT
+            mdg.trip_id AS tripId,
+            mdg.day_no AS dayNo,
+            mdg.target_round_count AS targetRoundCount
+        FROM mission_daily_goal mdg
+        INNER JOIN trip t ON t.trip_id = mdg.trip_id
+        WHERE t.status = 'CREATED'
+          AND DATE_ADD(t.mission_start_at, INTERVAL (mdg.day_no - 1) DAY) &lt; CURDATE()
+          AND mdg.target_round_count > (
+              SELECT COUNT(*)
+              FROM trip_mission tm
+              WHERE tm.trip_id = mdg.trip_id
+                AND tm.day_no = mdg.day_no
+                AND tm.status IN ('COMPLETED', 'FAILED', 'NOT_PERFORMED')
+          )
+    </select>
+
+    <!-- 그 날짜에 진행 중이던 미션을 전부 포기(FAILED) 처리한다. (자동 마감 배치용) -->
+    <update id="failInProgressTripMissionsForDay">
+        UPDATE
+            trip_mission
+        SET
+            status = 'FAILED',
+            failed_at = NOW(),
+            updated_at = NOW()
+        WHERE
+            trip_id = #{tripId}
+            AND day_no = #{dayNo}
+            AND status = 'IN_PROGRESS'
+    </update>
+
+    <!-- 그 날짜에 실제로 생성된(상태 무관) trip_mission 로우 수. 목표 라운드 수와 비교해 아직 뽑히지도
+         못한 라운드가 몇 개인지 계산하는 데 쓰인다. (자동 마감 배치용 - 이 SELECT 전에
+         failInProgressTripMissionsForDay 가 먼저 실행되어도 로우 수 자체는 바뀌지 않는다) -->
+    <select id="countTripMissionsForDay" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM trip_mission
+        WHERE trip_id = #{tripId}
+          AND day_no = #{dayNo}
+    </select>
+
+    <!-- 후보로 뽑히지도 못한 채 날짜가 지나버린 라운드에 "미션 수행 안함"(NOT_PERFORMED) 이력을 남긴다.
+         (자동 마감 배치용) -->
+    <insert id="insertNotPerformedTripMission">
+        INSERT INTO
+            trip_mission(
+                trip_id,
+                mission_id,
+                day_no,
+                assigned_order,
+                status,
+                created_at
+            )
+        VALUES
+            (
+                #{tripId},
+                #{missionId},
+                #{dayNo},
+                #{assignedOrder},
+                'NOT_PERFORMED',
+                NOW()
+            )
+    </insert>
+
+    <!-- 여행(tripId)을 완료 처리한다. (status 'CREATED' -> 'COMPLETED')
+         cancelTrip(TripMapper)과 동일하게 'CREATED' 상태일 때만 반영되어, 이미 완료/취소된 여행은 건드리지 않는다. -->
+    <update id="completeTrip">
+        UPDATE
+            trip
+        SET
+            status = 'COMPLETED',
+            completed_at = NOW(),
+            updated_at = NOW()
+        WHERE
+            trip_id = #{tripId}
+            AND status = 'CREATED'
+    </update>
+
     <select id="selectCandidateForReroll" resultType="dk.gatchaz.server.mission.dto.MissionCandidateRerollInfo">
         SELECT
             mission_candidate_id,
@@ -263,7 +371,7 @@
         WHERE trip_id = #{tripId}
           AND mission_candidate_id = #{missionCandidateId}
           AND selected_yn = 'N'
-          AND rerolled_yn = false
+          AND rerolled_yn = 'N'
           AND reroll_count > 0
     </select>
 
@@ -271,12 +379,12 @@
         UPDATE
             mission_candidate
         SET
-            rerolled_yn = true
+            rerolled_yn = 'Y'
         WHERE
             trip_id = #{tripId}
             AND mission_candidate_id = #{missionCandidateId}
             AND selected_yn = 'N'
-            AND rerolled_yn = false
+            AND rerolled_yn = 'N'
             AND reroll_count > 0
     </update>
 
@@ -322,7 +430,7 @@
                 #{assignedOrder},
                 #{missionId},
                 'N',
-                false,
+                'N',
                 #{rerollCount},
                 NOW()
             )
