@@ -49,11 +49,13 @@ public class MissionController {
                     - 아직 미션 시작 시각(mission_start_at) 전이면 **400** (MISSION_NOT_STARTED)
                     - 오늘 목표 라운드를 모두 완료/실패 처리했으면 **409** (DAILY_MISSION_QUOTA_COMPLETED)
                     - 추천 가능한 미션이 3개 미만이면 **400** (NO_AVAILABLE_MISSION)
+                    - 요청자가 그 여행 참여자가 아니면 **404** (NOT_FOUND_TRIP_MEMBER)
                     """)
     @GetMapping("/candidates")
     public ResponseDto<MissionCandidateListResponse> getMissionCandidates(
+            @UserId final Long userId,
             @Parameter(description = "여행 ID", example = "1") @PathVariable final Long tripId) {
-        return ResponseDto.ok(missionService.getMissionCandidates(tripId));
+        return ResponseDto.ok(missionService.getMissionCandidates(tripId, userId));
     }
 
     /**
@@ -66,12 +68,14 @@ public class MissionController {
 
                     - 선택한 후보를 selected_yn='Y'로 확정하고, trip_mission 을 status='IN_PROGRESS' 로 새로 생성한다.
                     - 이미 선택되었거나, 리롤되어 비활성화된 후보, 다른 여행/라운드의 후보는 선택할 수 없다.
+                    - 요청자가 그 여행 참여자가 아니면 404(NOT_FOUND_TRIP_MEMBER)를 반환한다.
                     """)
     @PostMapping("/{missionCandidateId}/select")
     public ResponseDto<MissionSelectResponse> selectMission(
+            @UserId final Long userId,
             @Parameter(description = "여행 ID", example = "1") @PathVariable final Long tripId,
             @Parameter(description = "선택할 미션 후보 ID", example = "1") @PathVariable final Long missionCandidateId) {
-        return ResponseDto.ok(missionService.selectMission(tripId, missionCandidateId));
+        return ResponseDto.ok(missionService.selectMission(tripId, missionCandidateId, userId));
     }
 
     /**
@@ -88,6 +92,7 @@ public class MissionController {
                     - 위치 인증에 실패해도 진행 중 상태는 유지되어 다시 시도할 수 있다.
 
                     ### 실패 응답
+                    - 요청자가 그 여행 참여자가 아니면 **404** (NOT_FOUND_TRIP_MEMBER)
                     - 진행 중인 미션이 아니면 **404** (NOT_FOUND_TRIP_MISSION)
                     - 팀원 전원이 셋로그를 촬영하지 않았으면 **400** (SETLOG_NOT_COMPLETE)
                     - 위치 인증에 실패했으면(허용 거리 초과) **400** (LOCATION_VERIFICATION_FAILED)
@@ -105,12 +110,14 @@ public class MissionController {
     /**
      * 미션 실패/포기
      */
-    @Operation(summary = "미션 실패/포기", description = "진행 중인 미션(tripMissionId)을 실패/포기 처리한다. (status 'IN_PROGRESS' -> 'FAILED') 진행 중인 미션이 아니면 404 를 반환한다.")
+    @Operation(summary = "미션 실패/포기", description = "진행 중인 미션(tripMissionId)을 실패/포기 처리한다. (status 'IN_PROGRESS' -> 'FAILED') "
+            + "진행 중인 미션이 아니면 404(NOT_FOUND_TRIP_MISSION), 요청자가 그 여행 참여자가 아니면 404(NOT_FOUND_TRIP_MEMBER)를 반환한다.")
     @PostMapping("/{tripMissionId}/fail")
     public ResponseDto<Void> failMission(
+            @UserId final Long userId,
             @Parameter(description = "여행 ID", example = "1") @PathVariable final Long tripId,
             @Parameter(description = "실패 처리할 진행 미션(trip_mission) ID", example = "1") @PathVariable final Long tripMissionId) {
-        missionService.failMission(tripId, tripMissionId);
+        missionService.failMission(tripId, tripMissionId, userId);
         return ResponseDto.<Void>ok(null);
     }
 
@@ -127,6 +134,7 @@ public class MissionController {
                     - 리롤로 새로 생긴 후보는 다시 리롤할 수 없다.
 
                     ### 실패 응답
+                    - 요청자가 그 여행 참여자가 아니면 **404** (NOT_FOUND_TRIP_MEMBER)
                     - 이미 선택/리롤되었거나 리롤 횟수를 소진한 후보면 **409** (REROLL_NOT_AVAILABLE)
                     - 교체할 수 있는 미션이 없으면 **400** (NO_AVAILABLE_MISSION)
                     """)

@@ -184,6 +184,15 @@
           AND status = 'JOINED'
     </select>
 
+    <select id="existsJoinedMember" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM member_rel_trip
+        WHERE trip_id = #{tripId}
+          AND member_id = #{memberId}
+          AND status = 'JOINED'
+    </select>
+
     <select id="countSetlogMembers" resultType="int">
         SELECT
             COUNT(DISTINCT member_id)

@@ -63,12 +63,13 @@ public class MissionService {
      *      여행 지역과 일치하는 미션 3개를 무작위로 뽑아 후보로 저장하고 반환한다.
      */
     @Transactional
-    public MissionCandidateListResponse getMissionCandidates(final Long tripId) {
-        // 1. 여행 존재 + 지역 선택 + 미션 시작 여부 확인
+    public MissionCandidateListResponse getMissionCandidates(final Long tripId, final Long userId) {
+        // 1. 여행 존재 + 참여자 여부 + 지역 선택 + 미션 시작 여부 확인
         final TripMissionSettingInfo trip = missionMapper.selectTripMissionSettingInfo(tripId);
         if (trip == null) {
             throw new CommonException(ErrorCode.NOT_FOUND_TRIP);
         }
+        requireTripMember(tripId, userId);
         if (trip.getTripRegionId() == null) {
             throw new CommonException(ErrorCode.TRIP_REGION_NOT_SELECTED);
         }
@@ -117,7 +118,9 @@ public class MissionService {
      * 3. 선택된 미션을 진행 중(trip_mission, status = 'IN_PROGRESS')으로 새로 생성한다.
      */
     @Transactional
-    public MissionSelectResponse selectMission(final Long tripId, final Long missionCandidateId) {
+    public MissionSelectResponse selectMission(final Long tripId, final Long missionCandidateId, final Long userId) {
+        requireTripMember(tripId, userId);
+
         // 1. 후보 확인
         final MissionCandidateSelectionInfo candidate =
                 missionMapper.selectCandidateForSelection(tripId, missionCandidateId);
@@ -161,6 +164,8 @@ public class MissionService {
     @Transactional
     public void completeMission(final Long tripId, final Long tripMissionId, final MissionCompleteRequest request,
                                  final Long userId) {
+        requireTripMember(tripId, userId);
+
         // 1. 진행 중인 미션인지 확인
         if (missionMapper.existsInProgressTripMission(tripId, tripMissionId) == 0) {
             throw new CommonException(ErrorCode.NOT_FOUND_TRIP_MISSION);
@@ -209,7 +214,9 @@ public class MissionService {
      * 진행 중인 미션(tripMissionId)을 실패/포기 처리한다. 진행 중 상태가 아니면 예외를 던진다.
      */
     @Transactional
-    public void failMission(final Long tripId, final Long tripMissionId) {
+    public void failMission(final Long tripId, final Long tripMissionId, final Long userId) {
+        requireTripMember(tripId, userId);
+
         final int failed = missionMapper.failTripMission(tripId, tripMissionId);
         if (failed == 0) {
             throw new CommonException(ErrorCode.NOT_FOUND_TRIP_MISSION);
@@ -217,6 +224,15 @@ public class MissionService {
 
         // 포기도 "미션 수행"으로 간주한다. 방금 포기한 미션으로 여행의 모든 날짜가 다 끝났다면 여행을 완료 처리한다.
         completeTripIfLastMission(tripId);
+    }
+
+    /**
+     * 요청자(userId)가 해당 여행(tripId)에 참여(JOINED) 중인지 확인한다. 아니면 예외를 던진다.
+     */
+    private void requireTripMember(final Long tripId, final Long userId) {
+        if (missionMapper.existsJoinedMember(tripId, userId) == 0) {
+            throw new CommonException(ErrorCode.NOT_FOUND_TRIP_MEMBER);
+        }
     }
 
     /**
@@ -340,6 +356,8 @@ public class MissionService {
      */
     @Transactional
     public MissionCandidateResponse rerollMission(final Long tripId, final Long missionCandidateId, final Long userId) {
+        requireTripMember(tripId, userId);
+
         // 1. 리롤 가능한 후보인지 확인
         final MissionCandidateRerollInfo candidate = missionMapper.selectCandidateForReroll(tripId, missionCandidateId);
         if (candidate == null) {
@@ -376,7 +394,7 @@ public class MissionService {
         // 5. 리롤 이력 기록
         missionMapper.insertMissionRerollLog(
                 tripId, candidate.getDayNo(), candidate.getAssignedOrder(),
-                memberId, candidate.getMissionId(), newMission.getMissionId());
+                userId, candidate.getMissionId(), newMission.getMissionId());
 
         return new MissionCandidateResponse(
                 param.getMissionCandidateId(),

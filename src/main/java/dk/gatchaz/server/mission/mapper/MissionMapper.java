@@ -100,6 +100,11 @@ public interface MissionMapper {
     int countJoinedMembers(@Param("tripId") Long tripId);
 
     /**
+     * 회원(memberId)이 해당 여행(tripId)에 현재 참여(JOINED) 중인지 확인한다. (참여 중이면 1 이상)
+     */
+    int existsJoinedMember(@Param("tripId") Long tripId, @Param("memberId") Long memberId);
+
+    /**
      * 특정 진행 미션(tripMissionId)에 대해 셋로그를 촬영한 서로 다른 팀원 수를 조회한다. (삭제되지 않은 것만)
      */
     int countSetlogMembers(@Param("tripMissionId") Long tripMissionId);
