@@ -49,6 +49,7 @@ sourceSets {
 tasks.register('copyPrivate', Copy) {
     from('Server-Secret') {
         include '*.yml'
+        include '*.p8'
     }
     into 'src/main/resources'
 }
