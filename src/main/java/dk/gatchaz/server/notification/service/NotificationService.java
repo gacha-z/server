@@ -68,10 +68,10 @@ public class NotificationService {
      * (기기를 재설치하거나 다른 계정으로 로그인해도 토큰이 같으면 같은 기기로 본다)
      */
     @Transactional
-    public DeviceRegisterResponse registerDevice(final DeviceRegisterRequest request, final Long memberId) {
+    public DeviceRegisterResponse registerDevice(final DeviceRegisterRequest request, final Long userId) {
         final DeviceSaveParam param = DeviceSaveParam.builder()
                 .deviceId(notificationMapper.selectDeviceIdByFcmToken(request.getFcmToken()))
-                .memberId(memberId)
+                .memberId(userId)
                 .fcmToken(request.getFcmToken())
                 .osType(request.getOsType())
                 .appVersion(request.getAppVersion())
@@ -89,13 +89,19 @@ public class NotificationService {
 
     /**
      * 디바이스(deviceId)의 권한 상태(위치/카메라/알림)를 갱신한다. 부분 업데이트 - 값을 보낸 필드만 반영한다.
-     * 권한 상태 행이 아직 없으면(최초 호출) 새로 만들고, 있으면 갱신한다. 대상 디바이스가 없으면 예외를 던진다.
+     * 권한 상태 행이 아직 없으면(최초 호출) 새로 만들고, 있으면 갱신한다.
+     * 대상 디바이스가 없으면 404, 요청자가 그 디바이스의 소유자가 아니면 403 을 던진다.
      */
     @Transactional
     public DevicePermissionResponse updateDevicePermission(final Long deviceId,
-                                                            final DevicePermissionUpdateRequest request) {
-        if (notificationMapper.countDeviceById(deviceId) == 0) {
+                                                            final DevicePermissionUpdateRequest request,
+                                                            final Long userId) {
+        final Long ownerMemberId = notificationMapper.selectDeviceMemberId(deviceId);
+        if (ownerMemberId == null) {
             throw new CommonException(ErrorCode.NOT_FOUND_DEVICE);
+        }
+        if (!ownerMemberId.equals(userId)) {
+            throw new CommonException(ErrorCode.NOT_DEVICE_OWNER);
         }
 
         final Long devicePermissionId = notificationMapper.selectDevicePermissionIdByDeviceId(deviceId);
@@ -121,11 +127,11 @@ public class NotificationService {
      * hasNext 판별을 위해 요청 개수 + 1 을 조회한 뒤 초과분을 잘라낸다.
      */
     @Transactional(readOnly = true)
-    public NotificationListResponse getNotifications(final Long memberId, final Long cursor, final int size) {
+    public NotificationListResponse getNotifications(final Long userId, final Long cursor, final int size) {
         final int pageSize = Math.min(Math.max(size, MIN_SIZE), MAX_SIZE);
 
         final List<NotificationResponse> notifications =
-                notificationMapper.selectNotifications(new NotificationSearchParam(memberId, cursor, pageSize + 1));
+                notificationMapper.selectNotifications(new NotificationSearchParam(userId, cursor, pageSize + 1));
 
         final boolean hasNext = notifications.size() > pageSize;
         if (hasNext) {
@@ -136,7 +142,7 @@ public class NotificationService {
                 : null;
 
         return new NotificationListResponse(
-                notifications, nextCursor, hasNext, notificationMapper.countUnreadNotifications(memberId));
+                notifications, nextCursor, hasNext, notificationMapper.countUnreadNotifications(userId));
     }
 
     /**
@@ -144,8 +150,8 @@ public class NotificationService {
      * 본인 알림이 아니거나 이미 읽은 알림이면 아무것도 바꾸지 않는다. (중복 호출해도 안전)
      */
     @Transactional
-    public void readNotification(final Long notificationId, final Long memberId) {
-        notificationMapper.markNotificationRead(notificationId, memberId);
+    public void readNotification(final Long notificationId, final Long userId) {
+        notificationMapper.markNotificationRead(notificationId, userId);
     }
 
     /**

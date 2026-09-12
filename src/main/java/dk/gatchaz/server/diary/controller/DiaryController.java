@@ -42,9 +42,9 @@ public class DiaryController {
     @Operation(summary = "일기 저장", description = "요청의 content 를 그대로 저장한다(생성 로직 없음). 직접 작성한 내용 또는 /generate 로 받은 AI 초안을 저장한다. AI 초안 저장 시 isAiGenerated=true 로 보내면 is_ai_generated='Y' 로 기록된다(미지정 시 'N'). tripId·memberId 필수, visibility 미지정 시 TEAM. 저장된 일기 전체를 반환한다.")
     @PostMapping
     public ResponseDto<DiaryDetailResponse> createDiary(
-            @UserId final Long memberId,
+            @UserId final Long userId,
             @Valid @RequestBody final DiaryCreateRequest request) {
-        return ResponseDto.created(diaryService.createDiary(request, memberId));
+        return ResponseDto.created(diaryService.createDiary(request, userId));
     }
 
     /**
@@ -53,32 +53,34 @@ public class DiaryController {
     @Operation(summary = "AI 일기 초안 생성(미리보기)", description = "content(사용자 입력)로 AI가 본문 초안을 생성해 반환한다(저장하지 않음). 사용자가 검토·수정 후 완료 시, POST /diaries 에 content=초안, isAiGenerated=true 로 호출해 저장한다. 무료 티어(Groq) 사용. 키 미설정/한도초과/오류 시 503(AI_GENERATION_FAILED).")
     @PostMapping("/generate")
     public ResponseDto<DiaryGenerateResponse> generateDiary(
-            @UserId final Long memberId,
+            @UserId final Long userId,
             @Valid @RequestBody final DiaryGenerateRequest request) {
         return ResponseDto.ok(diaryService.generateDiary(request));
     }
 
     /**
-     * 일기 단건 조회
+     * 내 일기 단건 조회
      */
-    @Operation(summary = "일기 상세 조회", description = "일기 ID로 단건을 조회한다. 삭제된 일기는 조회되지 않으며, 없으면 404 를 반환한다.")
+    @Operation(summary = "내 일기 상세 조회", description = "일기 ID로 내 일기 단건을 조회한다. 삭제된 일기는 조회되지 않아 404 를 반환하고, "
+            + "본인이 작성한 일기가 아니면 403 을 반환한다. (다른 팀원의 일기는 GET /trips/{tripId}/diaries/{diaryId} 를 쓴다)")
     @GetMapping("/{diaryId}")
     public ResponseDto<DiaryDetailResponse> getDiary(
+            @UserId final Long userId,
             @Parameter(description = "조회할 일기 ID", example = "1") @PathVariable final Long diaryId) {
-        return ResponseDto.ok(diaryService.getDiary(diaryId));
+        return ResponseDto.ok(diaryService.getDiary(diaryId, userId));
     }
 
     /**
-     * 일기 목록 조회 (커서 기반 무한 스크롤)
+     * 내 일기 목록 조회 (커서 기반 무한 스크롤)
      */
     @Operation(
-            summary = "일기 목록 조회",
+            summary = "내 일기 목록 조회",
             description = """
-                    회원/여행 조건으로 일기를 최신순, 커서 기반 무한 스크롤로 조회한다. 삭제된 일기는 제외된다.
+                    내(로그인한 회원)가 작성한 일기를 조건에 맞게 최신순, 커서 기반 무한 스크롤로 조회한다. 삭제된 일기는 제외된다.
 
                     ### 필터 (모두 선택값, 없으면 조건 무시)
-                    - **memberId**: 조회 기준 회원 ID (없으면 전체 대상)
                     - **tripId**: 연결된 여행 ID 정확 일치
+                    - **diaryDate**: 일기 날짜 정확 일치
 
                     ### 무한 스크롤 (커서 방식)
                     1. 첫 조회는 `cursor` 없이 호출한다.
@@ -87,8 +89,7 @@ public class DiaryController {
                     """)
     @GetMapping
     public ResponseDto<DiaryListResponse> getDiaries(
-            @Parameter(description = "조회 기준 회원 ID(선택). 없으면 전체 대상.", example = "1")
-            @RequestParam(required = false) final Long memberId,
+            @UserId final Long userId,
             @Parameter(description = "연결된 여행 ID(선택, 정확히 일치)", example = "1")
             @RequestParam(required = false) final Long tripId,
             @Parameter(description = "일기 날짜(선택, yyyy-MM-dd). 특정 날짜의 일기 조회.", example = "2026-08-01")
@@ -97,29 +98,31 @@ public class DiaryController {
             @RequestParam(required = false) final Long cursor,
             @Parameter(description = "한 번에 조회할 개수 (기본 10, 1~50 범위를 벗어나면 자동 보정)", example = "10")
             @RequestParam(required = false, defaultValue = "10") final int size) {
-        final DiarySearchRequest request = new DiarySearchRequest(memberId, tripId, diaryDate, cursor, size);
-        return ResponseDto.ok(diaryService.getDiaries(request));
+        final DiarySearchRequest request = new DiarySearchRequest(userId, tripId, diaryDate, cursor, size);
+        return ResponseDto.ok(diaryService.getDiaries(request, userId));
     }
 
     /**
      * 일기 수정 (전달한 값으로 본문/공개범위 교체)
      */
-    @Operation(summary = "일기 수정", description = "일기 ID의 본문/공개범위를 전달한 값으로 교체하고, 수정된 일기를 반환한다. 삭제된 일기는 수정할 수 없어 404 를 반환한다.")
+    @Operation(summary = "일기 수정", description = "일기 ID의 본문/공개범위를 전달한 값으로 교체하고, 수정된 일기를 반환한다. 삭제된 일기는 수정할 수 없어 404 를 반환한다. 본인이 작성한 일기가 아니면 403 을 반환한다.")
     @PatchMapping("/{diaryId}")
     public ResponseDto<DiaryDetailResponse> updateDiary(
+            @UserId final Long userId,
             @Parameter(description = "수정할 일기 ID", example = "1") @PathVariable final Long diaryId,
             @Valid @RequestBody final DiaryUpdateRequest request) {
-        return ResponseDto.ok(diaryService.updateDiary(diaryId, request));
+        return ResponseDto.ok(diaryService.updateDiary(diaryId, request, userId));
     }
 
     /**
      * 일기 삭제 (소프트 삭제)
      */
-    @Operation(summary = "일기 삭제", description = "일기 ID로 일기를 소프트 삭제한다(status='DELETED'). 이미 삭제되었거나 없으면 404 를 반환한다.")
+    @Operation(summary = "일기 삭제", description = "일기 ID로 일기를 소프트 삭제한다(status='DELETED'). 이미 삭제되었거나 없으면 404 를 반환한다. 본인이 작성한 일기가 아니면 403 을 반환한다.")
     @DeleteMapping("/{diaryId}")
     public ResponseDto<Void> deleteDiary(
+            @UserId final Long userId,
             @Parameter(description = "삭제할 일기 ID", example = "1") @PathVariable final Long diaryId) {
-        diaryService.deleteDiary(diaryId);
+        diaryService.deleteDiary(diaryId, userId);
         return ResponseDto.<Void>ok(null);
     }
 }

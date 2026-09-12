@@ -35,9 +35,9 @@ public interface NotificationMapper {
     int updateDevice(DeviceSaveParam param);
 
     /**
-     * 디바이스(deviceId)가 존재하는지 확인한다.
+     * 디바이스(deviceId)의 소유자 회원 ID 를 조회한다. 없으면 null.
      */
-    int countDeviceById(@Param("deviceId") Long deviceId);
+    Long selectDeviceMemberId(@Param("deviceId") Long deviceId);
 
     /**
      * 디바이스(deviceId)의 권한 상태(device_permission) 행 ID 를 조회한다. 없으면 null.

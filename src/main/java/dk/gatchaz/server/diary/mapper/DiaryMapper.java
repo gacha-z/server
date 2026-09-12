@@ -3,6 +3,7 @@ package dk.gatchaz.server.diary.mapper;
 import dk.gatchaz.server.diary.dto.DiaryCreateParam;
 import dk.gatchaz.server.diary.dto.DiaryDetailResponse;
 import dk.gatchaz.server.diary.dto.DiarySearchParam;
+import dk.gatchaz.server.diary.dto.DiarySummaryResponse;
 import dk.gatchaz.server.diary.dto.DiaryTripContext;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -58,4 +59,11 @@ public interface DiaryMapper {
      * 해당 회원(memberId)이 그 날짜(diaryDate)에 작성한, 삭제되지 않은 일기 수를 센다. (회원별 하루 1개 제한 검증용)
      */
     int countActiveDiaryByMemberAndDate(@Param("memberId") Long memberId, @Param("diaryDate") LocalDate diaryDate);
+
+    /**
+     * 해당 여행(tripId) 참여자 전체가 특정 날짜(diaryDate)에 쓴 일기 요약 목록을 조회한다. (삭제된 일기는 제외)
+     * 본문/공개범위/AI 생성여부/상태는 포함하지 않는다 - 필요하면 단건 조회(selectDiary)로 확인한다.
+     */
+    List<DiarySummaryResponse> selectTripDiariesByDate(@Param("tripId") Long tripId,
+                                                        @Param("diaryDate") LocalDate diaryDate);
 }

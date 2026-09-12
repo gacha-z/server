@@ -53,9 +53,9 @@
             device_id = #{deviceId}
     </update>
 
-    <select id="countDeviceById" resultType="int">
+    <select id="selectDeviceMemberId" resultType="java.lang.Long">
         SELECT
-            COUNT(*)
+            member_id
         FROM device
         WHERE device_id = #{deviceId}
     </select>

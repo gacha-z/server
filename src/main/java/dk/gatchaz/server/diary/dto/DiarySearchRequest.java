@@ -13,7 +13,7 @@ import java.time.LocalDate;
 @AllArgsConstructor
 public class DiarySearchRequest {
 
-    /** 조회 기준 회원 ID (선택) */
+    /** 조회 기준 회원 ID. 항상 @UserId 로 인증된 요청자 자신(다른 회원 지정 불가). */
     private Long memberId;
 
     /** 연결된 여행 ID (정확히 일치, 선택) */

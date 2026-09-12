@@ -140,4 +140,19 @@
             )
     </insert>
 
+    <select id="selectTripDiariesByDate" resultType="dk.gatchaz.server.diary.dto.DiarySummaryResponse">
+        SELECT
+            d.diary_id,
+            d.trip_id,
+            d.member_id,
+            d.diary_date,
+            d.created_at,
+            d.updated_at
+        FROM diary d
+        WHERE d.trip_id = #{tripId}
+          AND d.diary_date = #{diaryDate}
+          AND (d.status IS NULL OR d.status != 'DELETED')
+        ORDER BY d.diary_id ASC
+    </select>
+
 </mapper>

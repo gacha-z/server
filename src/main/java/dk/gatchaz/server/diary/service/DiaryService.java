@@ -8,6 +8,7 @@ import dk.gatchaz.server.diary.dto.DiarySearchParam;
 import dk.gatchaz.server.diary.dto.DiarySearchRequest;
 import dk.gatchaz.server.diary.dto.DiaryGenerateRequest;
 import dk.gatchaz.server.diary.dto.DiaryGenerateResponse;
+import dk.gatchaz.server.diary.dto.DiarySummaryResponse;
 import dk.gatchaz.server.diary.dto.DiaryTripContext;
 import dk.gatchaz.server.diary.dto.DiaryUpdateRequest;
 import dk.gatchaz.server.diary.mapper.DiaryMapper;
@@ -15,12 +16,14 @@ import dk.gatchaz.server.diary.support.DiaryContentGenerator;
 import dk.gatchaz.server.common.exception.CommonException;
 import dk.gatchaz.server.common.exception.ErrorCode;
 import dk.gatchaz.server.notification.event.DiaryCreatedEvent;
+import dk.gatchaz.server.trip.mapper.TripMapper;
 import dk.gatchaz.server.type.EDiaryVisibility;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -28,6 +31,7 @@ import java.util.List;
 public class DiaryService {
 
     private final DiaryMapper diaryMapper;
+    private final TripMapper tripMapper;
     private final DiaryContentGenerator diaryContentGenerator;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -37,11 +41,11 @@ public class DiaryService {
      * trip_id / member_id 는 필수(요청값), status 는 'ACTIVE'(INSERT 쿼리), visibility 미지정 시 TEAM 으로 보정한다.
      */
     @Transactional
-    public DiaryDetailResponse createDiary(final DiaryCreateRequest request, final Long memberId) {
+    public DiaryDetailResponse createDiary(final DiaryCreateRequest request, final Long userId) {
         // 저장 전용: content(직접 작성 또는 /generate 로 받은 AI 초안)를 그대로 저장한다.
         // AI 초안을 저장하는 경우 요청의 isAiGenerated=true 로 받아 'Y' 로 기록한다. (생성 로직은 /generate 담당)
         // 회원 기준 하루 1개 제한: 같은 회원이 같은 날짜에 (삭제되지 않은) 일기가 이미 있으면 실패.
-        if (diaryMapper.countActiveDiaryByMemberAndDate(memberId, request.getDiaryDate()) > 0) {
+        if (diaryMapper.countActiveDiaryByMemberAndDate(userId, request.getDiaryDate()) > 0) {
             throw new CommonException(ErrorCode.ALREADY_EXISTS_DIARY_DATE);
         }
 
@@ -52,7 +56,7 @@ public class DiaryService {
 
         final DiaryCreateParam param = DiaryCreateParam.builder()
                 .tripId(request.getTripId())
-                .memberId(memberId)
+                .memberId(userId)
                 .content(request.getContent())
                 .diaryDate(request.getDiaryDate())
                 .visibility(visibility)
@@ -70,7 +74,7 @@ public class DiaryService {
         // 같은 여행 팀원에게 알림을 보내기 위한 이벤트. 이 트랜잭션이 커밋된 뒤 별도 스레드에서 처리된다.
         // (저장이 롤백되면 알림도 나가지 않고, 알림 발송이 이 API 응답을 늦추지 않는다)
         eventPublisher.publishEvent(new DiaryCreatedEvent(
-                param.getDiaryId(), request.getTripId(), memberId, diaryVisibility));
+                param.getDiaryId(), request.getTripId(), userId, diaryVisibility));
 
         return diaryMapper.selectDiary(param.getDiaryId());
     }
@@ -88,28 +92,24 @@ public class DiaryService {
     }
 
     /**
-     * 일기 단건을 조회한다. 없거나 삭제된 일기면 예외를 던진다.
+     * 내 일기 단건을 조회한다. 없거나 삭제된 일기면 404, 본인이 작성한 일기가 아니면 403 을 던진다.
      */
     @Transactional(readOnly = true)
-    public DiaryDetailResponse getDiary(final Long diaryId) {
-        final DiaryDetailResponse diary = diaryMapper.selectDiary(diaryId);
-        if (diary == null) {
-            throw new CommonException(ErrorCode.NOT_FOUND_DIARY);
-        }
-        return diary;
+    public DiaryDetailResponse getDiary(final Long diaryId, final Long userId) {
+        return requireOwnedDiary(diaryId, userId);
     }
 
     /**
-     * 조건(회원/여행)에 맞는 일기를 커서 기반 무한 스크롤로 조회한다.
+     * 내 일기를(조건에 맞게) 커서 기반 무한 스크롤로 조회한다.
      * hasNext 판별을 위해 요청 개수 + 1 을 조회한 뒤 초과분을 잘라낸다.
      */
     @Transactional(readOnly = true)
-    public DiaryListResponse getDiaries(final DiarySearchRequest request) {
+    public DiaryListResponse getDiaries(final DiarySearchRequest request, final Long userId) {
         // size 범위 보정 (1~50)
         final int size = Math.min(Math.max(request.getSize(), 1), 50);
 
         final DiarySearchParam param = DiarySearchParam.builder()
-                .memberId(request.getMemberId())
+                .memberId(userId)
                 .tripId(request.getTripId())
                 .diaryDate(request.getDiaryDate())
                 .cursor(request.getCursor())
@@ -126,12 +126,51 @@ public class DiaryService {
     }
 
     /**
+     * 같은 여행(tripId) 참여자(본인 포함) 전체가 특정 날짜(diaryDate)에 쓴 일기 요약 목록을 조회한다.
+     * 본문/공개범위/AI 생성여부/상태는 포함하지 않는다(목록에서는 누가 썼는지만 확인, 상세는 단건 조회로).
+     * 요청자가 그 여행에 참여 중이 아니면 예외를 던진다. (visibility 는 아직 반영하지 않음 - 추후 확장 여지로 남겨둠)
+     */
+    @Transactional(readOnly = true)
+    public List<DiarySummaryResponse> getTripDiariesByDate(final Long tripId, final LocalDate diaryDate,
+                                                            final Long userId) {
+        requireTripMember(tripId, userId);
+        return diaryMapper.selectTripDiariesByDate(tripId, diaryDate);
+    }
+
+    /**
+     * 같은 여행(tripId) 참여자(본인 포함) 누구의 것이든 일기 1건을 조회한다.
+     * 요청자가 그 여행에 참여 중이 아니면 예외, 대상 일기가 없거나 그 여행 소속이 아니면 404 를 던진다.
+     * (visibility 는 아직 반영하지 않음 - 추후 확장 여지로 남겨둠)
+     */
+    @Transactional(readOnly = true)
+    public DiaryDetailResponse getTripDiary(final Long tripId, final Long diaryId, final Long userId) {
+        requireTripMember(tripId, userId);
+
+        final DiaryDetailResponse diary = diaryMapper.selectDiary(diaryId);
+        if (diary == null || !tripId.equals(diary.getTripId())) {
+            throw new CommonException(ErrorCode.NOT_FOUND_DIARY);
+        }
+        return diary;
+    }
+
+    /**
+     * 요청자(userId)가 해당 여행(tripId)에 참여(JOINED) 중인지 확인한다. 아니면 예외를 던진다.
+     */
+    private void requireTripMember(final Long tripId, final Long userId) {
+        if (tripMapper.existsTripMember(tripId, userId) == 0) {
+            throw new CommonException(ErrorCode.NOT_FOUND_TRIP_MEMBER);
+        }
+    }
+
+    /**
      * 일기(diaryId)의 본문/공개범위를 수정하고, 수정된 일기를 반환한다.
-     * 대상이 없거나 이미 삭제된 일기면 예외를 던진다.
+     * 대상이 없거나 이미 삭제된 일기면 404, 요청자가 작성자가 아니면 403 을 던진다.
      */
     @Transactional
-    public DiaryDetailResponse updateDiary(final Long diaryId, final DiaryUpdateRequest request) {
-        // TODO: 로그인 연동 후 본인 일기만 수정 가능하도록 memberId 소유권 검증 추가
+    public DiaryDetailResponse updateDiary(final Long diaryId, final DiaryUpdateRequest request,
+                                            final Long userId) {
+        requireOwnedDiary(diaryId, userId);
+
         final String visibility =
                 (request.getVisibility() == null ? EDiaryVisibility.TEAM : request.getVisibility()).name();
 
@@ -143,14 +182,31 @@ public class DiaryService {
     }
 
     /**
-     * 일기(diaryId)를 소프트 삭제한다(status='DELETED'). 대상이 없거나 이미 삭제된 일기면 예외를 던진다.
+     * 일기(diaryId)를 소프트 삭제한다(status='DELETED'). 대상이 없거나 이미 삭제된 일기면 404,
+     * 요청자가 작성자가 아니면 403 을 던진다.
      */
     @Transactional
-    public void deleteDiary(final Long diaryId) {
-        // TODO: 로그인 연동 후 본인 일기만 삭제 가능하도록 memberId 소유권 검증 추가
+    public void deleteDiary(final Long diaryId, final Long userId) {
+        requireOwnedDiary(diaryId, userId);
+
         final int deleted = diaryMapper.softDeleteDiary(diaryId);
         if (deleted == 0) {
             throw new CommonException(ErrorCode.NOT_FOUND_DIARY);
         }
+    }
+
+    /**
+     * 일기(diaryId)가 존재하고 요청자(userId)가 작성자인지 확인한 뒤 그 일기를 반환한다.
+     * 없으면 404(NOT_FOUND_DIARY), 작성자가 아니면 403(NOT_DIARY_OWNER)을 던진다.
+     */
+    private DiaryDetailResponse requireOwnedDiary(final Long diaryId, final Long userId) {
+        final DiaryDetailResponse diary = diaryMapper.selectDiary(diaryId);
+        if (diary == null) {
+            throw new CommonException(ErrorCode.NOT_FOUND_DIARY);
+        }
+        if (!diary.getMemberId().equals(userId)) {
+            throw new CommonException(ErrorCode.NOT_DIARY_OWNER);
+        }
+        return diary;
     }
 }
