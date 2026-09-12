@@ -60,7 +60,8 @@ public class MissionService {
      * 5. 현재 라운드의 활성 후보(rerolled_yn = 'N')를 조회한다.
      *    - 있으면 그대로 반환한다. (선택 대기 중이거나 이미 선택되어 진행 중인 라운드를 재조회하는 경우)
      *    - 없으면(아직 후보가 생성되지 않은 라운드) 이 여행에서 아직 선택(selected_yn='Y')된 적 없는 미션 중
-     *      여행 지역과 일치하는 미션 3개를 무작위로 뽑아 후보로 저장하고 반환한다.
+     *      여행 지역과 일치하는 미션 3개를 무작위로 뽑아 후보로 저장하고, 이 라운드를 선택/리롤할 담당자를
+     *      참여자 중 무작위로 배정한 뒤 반환한다.
      */
     @Transactional
     public MissionCandidateListResponse getMissionCandidates(final Long tripId, final Long userId) {
@@ -98,21 +99,26 @@ public class MissionService {
                 missionMapper.selectActiveCandidates(tripId, dayNo, assignedOrder);
 
         // 아직 생성되지 않은 라운드면 새로 후보를 뽑아 저장한다.
+        // 이때 이 라운드에서 선택/리롤할 수 있는 담당자를 참여자 중 무작위로 배정한다(라운드마다 새로 배정).
         if (candidates.isEmpty()) {
             final List<Long> missionIds =
                     missionMapper.selectRandomMissionIds(CANDIDATE_COUNT, trip.getTripRegionId(), tripId);
             if (missionIds.size() < CANDIDATE_COUNT) {
                 throw new CommonException(ErrorCode.NO_AVAILABLE_MISSION);
             }
-            missionMapper.insertCandidates(tripId, dayNo, assignedOrder, missionIds);
+            final Long pickerMemberId = missionMapper.selectRandomJoinedMemberId(tripId);
+            missionMapper.insertCandidates(tripId, dayNo, assignedOrder, missionIds, pickerMemberId);
             candidates = missionMapper.selectActiveCandidates(tripId, dayNo, assignedOrder);
         }
 
-        return new MissionCandidateListResponse(dayNo, assignedOrder, targetRoundCount, candidates);
+        final Long pickerMemberId = missionMapper.selectPickerMemberId(tripId, dayNo, assignedOrder);
+
+        return new MissionCandidateListResponse(dayNo, assignedOrder, targetRoundCount, pickerMemberId, candidates);
     }
 
     /**
      * 미션 후보(missionCandidateId)를 선택해 진행 중인 미션(trip_mission)으로 확정한다.
+     * 요청자가 이 라운드의 담당자(picker_member_id)가 아니면 예외를 던진다.
      * 1. 후보가 해당 여행의 활성(리롤되지 않은) + 미선택 상태인지 확인한다.
      * 2. 후보를 선택 확정한다. (selected_yn 'N' -> 'Y', 동시 선택 경합 시 실패)
      * 3. 선택된 미션을 진행 중(trip_mission, status = 'IN_PROGRESS')으로 새로 생성한다.
@@ -127,6 +133,7 @@ public class MissionService {
         if (candidate == null) {
             throw new CommonException(ErrorCode.INVALID_MISSION_CANDIDATE_SELECTION);
         }
+        requireMissionPicker(candidate.getPickerMemberId(), userId);
 
         // 2. 선택 확정 (동시에 다른 요청이 먼저 선택했으면 실패)
         final int selected = missionMapper.markCandidateSelected(tripId, missionCandidateId);
@@ -232,6 +239,16 @@ public class MissionService {
     private void requireTripMember(final Long tripId, final Long userId) {
         if (missionMapper.existsJoinedMember(tripId, userId) == 0) {
             throw new CommonException(ErrorCode.NOT_FOUND_TRIP_MEMBER);
+        }
+    }
+
+    /**
+     * 요청자(userId)가 그 라운드의 담당자(pickerMemberId)인지 확인한다. 아니면 예외를 던진다.
+     * pickerMemberId 가 null 이면(이 기능 도입 전에 생성된 라운드) 검증을 건너뛴다.
+     */
+    private void requireMissionPicker(final Long pickerMemberId, final Long userId) {
+        if (pickerMemberId != null && !pickerMemberId.equals(userId)) {
+            throw new CommonException(ErrorCode.NOT_MISSION_PICKER);
         }
     }
 
@@ -348,6 +365,7 @@ public class MissionService {
 
     /**
      * 미션 후보(missionCandidateId)를 리롤한다. 후보당 1회만 가능하다.
+     * 요청자가 이 라운드의 담당자(picker_member_id)가 아니면 예외를 던진다.
      * 1. 리롤 가능한 후보인지 확인한다. (활성 + 미선택 + reroll_count > 0)
      * 2. 기존 후보는 비활성화한다. (rerolled_yn 'Y', mission_id 는 그대로 유지해 이력을 보존)
      * 3. 방금 버린 미션과 다르고, 이 여행에서 아직 선택된 적 없는 미션을 무작위로 1개 뽑는다.
@@ -363,6 +381,7 @@ public class MissionService {
         if (candidate == null) {
             throw new CommonException(ErrorCode.REROLL_NOT_AVAILABLE);
         }
+        requireMissionPicker(candidate.getPickerMemberId(), userId);
 
         // 2. 기존 후보 비활성화 (동시 리롤 경합 시 실패)
         final int deactivated = missionMapper.deactivateCandidateForReroll(tripId, missionCandidateId);
@@ -381,12 +400,13 @@ public class MissionService {
             throw new CommonException(ErrorCode.NO_AVAILABLE_MISSION);
         }
 
-        // 4. 새 후보를 같은 라운드에 저장 (reroll_count = 0, 다시 리롤 불가)
+        // 4. 새 후보를 같은 라운드에 저장 (reroll_count = 0, 다시 리롤 불가). 담당자는 그대로 이어받는다.
         final MissionRerollInsertParam param = MissionRerollInsertParam.builder()
                 .tripId(tripId)
                 .dayNo(candidate.getDayNo())
                 .assignedOrder(candidate.getAssignedOrder())
                 .missionId(newMission.getMissionId())
+                .pickerMemberId(candidate.getPickerMemberId())
                 .rerollCount(0)
                 .build();
         missionMapper.insertRerolledCandidate(param);

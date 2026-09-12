@@ -27,6 +27,9 @@ public class MissionCandidateListResponse {
     @Schema(description = "그 날의 목표 미션 라운드 수 (mission_min~mission_max 사이에서 정해져 하루 동안 고정)", example = "3")
     private int targetRoundCount;
 
+    @Schema(description = "이번 라운드에서 미션을 선택/리롤할 수 있는 담당자 회원 ID (참여자 중 무작위 배정)", example = "3")
+    private Long pickerMemberId;
+
     @Schema(description = "미션 후보 3개")
     private List<MissionCandidateResponse> candidates;
 }

@@ -62,12 +62,26 @@ public interface MissionMapper {
 
     /**
      * 새로 뽑힌 미션 목록을 해당 라운드(dayNo, assignedOrder)의 후보로 mission_candidate 에 저장한다.
-     * (selected_yn = 'N', rerolled_yn = 'N')
+     * (selected_yn = 'N', rerolled_yn = 'N') pickerMemberId 는 이 라운드에서 선택/리롤할 수 있는
+     * 담당자로, 후보 3개 모두에 동일하게 기록된다.
      */
     int insertCandidates(@Param("tripId") Long tripId,
                           @Param("dayNo") int dayNo,
                           @Param("assignedOrder") int assignedOrder,
-                          @Param("missionIds") List<Long> missionIds);
+                          @Param("missionIds") List<Long> missionIds,
+                          @Param("pickerMemberId") Long pickerMemberId);
+
+    /**
+     * 여행(tripId)에 현재 참여(JOINED) 중인 팀원 중 1명을 무작위로 조회한다. (라운드 담당자 배정용) 없으면 null.
+     */
+    Long selectRandomJoinedMemberId(@Param("tripId") Long tripId);
+
+    /**
+     * 해당 라운드(tripId, dayNo, assignedOrder)의 담당자(picker_member_id)를 조회한다. 없으면 null.
+     */
+    Long selectPickerMemberId(@Param("tripId") Long tripId,
+                              @Param("dayNo") int dayNo,
+                              @Param("assignedOrder") int assignedOrder);
 
     /**
      * 선택(select) 대상 후보(missionCandidateId)의 정보를 조회한다.

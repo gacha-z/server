@@ -13,6 +13,7 @@ import lombok.Setter;
 public class MissionCandidateSelectionInfo {
     private Long missionCandidateId;
     private Long missionId;
+    private Long pickerMemberId;
     private int dayNo;
     private int assignedOrder;
     private String missionType;

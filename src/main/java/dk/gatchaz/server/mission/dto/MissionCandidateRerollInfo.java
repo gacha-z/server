@@ -13,6 +13,7 @@ import lombok.Setter;
 public class MissionCandidateRerollInfo {
     private Long missionCandidateId;
     private Long missionId;
+    private Long pickerMemberId;
     private int dayNo;
     private int assignedOrder;
     private Integer rerollCount;

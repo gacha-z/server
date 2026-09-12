@@ -19,6 +19,7 @@ public class MissionRerollInsertParam {
     private int dayNo;
     private int assignedOrder;
     private Long missionId;
+    private Long pickerMemberId;
 
     /** 새로 생긴 후보의 남은 리롤 횟수 (항상 0 - 리롤로 생긴 후보는 다시 리롤할 수 없다) */
     private int rerollCount;

@@ -42,6 +42,9 @@ public class MissionController {
                       더 이상 후보를 만들지 않는다.
                     - 여행 지역(trip_region_id)의 미션 중, 이 여행에서 이미 선택(selected_yn='Y')된 적 없는
                       미션 3개를 무작위로 뽑아 후보로 저장한다. (리롤로 버려진 후보는 이후 라운드에 다시 나올 수 있음)
+                    - 후보를 새로 만들 때, 이 라운드에서 미션을 선택/리롤할 수 있는 담당자(pickerMemberId)를
+                      참여자 중 무작위로 배정한다. 응답의 pickerMemberId 로 누구 차례인지 확인한다(라운드마다
+                      새로 배정되고, 같은 라운드를 다시 조회하면 이미 배정된 담당자를 그대로 반환한다).
 
                     ### 실패 응답
                     - 여행이 없으면 **404** (NOT_FOUND_TRIP)
@@ -68,7 +71,11 @@ public class MissionController {
 
                     - 선택한 후보를 selected_yn='Y'로 확정하고, trip_mission 을 status='IN_PROGRESS' 로 새로 생성한다.
                     - 이미 선택되었거나, 리롤되어 비활성화된 후보, 다른 여행/라운드의 후보는 선택할 수 없다.
-                    - 요청자가 그 여행 참여자가 아니면 404(NOT_FOUND_TRIP_MEMBER)를 반환한다.
+                    - 이 라운드의 담당자(미션 후보 조회 응답의 pickerMemberId)만 선택할 수 있다.
+
+                    ### 실패 응답
+                    - 요청자가 그 여행 참여자가 아니면 **404** (NOT_FOUND_TRIP_MEMBER)
+                    - 요청자가 이 라운드의 담당자가 아니면 **403** (NOT_MISSION_PICKER)
                     """)
     @PostMapping("/{missionCandidateId}/select")
     public ResponseDto<MissionSelectResponse> selectMission(
@@ -131,10 +138,12 @@ public class MissionController {
 
                     - 기존 후보는 비활성화되지만(rerolled_yn='Y') mission_id 는 바뀌지 않아 이력이 보존된다.
                     - 새로 뽑히는 미션은 방금 버린 미션과 다르며(즉시 중복 방지), 이 여행에서 아직 선택된 적 없는 미션이다.
-                    - 리롤로 새로 생긴 후보는 다시 리롤할 수 없다.
+                    - 리롤로 새로 생긴 후보는 다시 리롤할 수 없다. 담당자(pickerMemberId)는 그대로 이어진다.
+                    - 이 라운드의 담당자(미션 후보 조회 응답의 pickerMemberId)만 리롤할 수 있다.
 
                     ### 실패 응답
                     - 요청자가 그 여행 참여자가 아니면 **404** (NOT_FOUND_TRIP_MEMBER)
+                    - 요청자가 이 라운드의 담당자가 아니면 **403** (NOT_MISSION_PICKER)
                     - 이미 선택/리롤되었거나 리롤 횟수를 소진한 후보면 **409** (REROLL_NOT_AVAILABLE)
                     - 교체할 수 있는 미션이 없으면 **400** (NO_AVAILABLE_MISSION)
                     """)
