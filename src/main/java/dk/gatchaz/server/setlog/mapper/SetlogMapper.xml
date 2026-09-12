@@ -97,12 +97,20 @@
         ORDER BY s.slot_no ASC
     </select>
 
-    <select id="selectFileUrlById" resultType="java.lang.String">
+    <select id="selectSetlogFileInfo" resultType="dk.gatchaz.server.setlog.dto.SetlogFileInfo">
         SELECT
+            member_id,
             file_url
         FROM setlog
         WHERE setlog_id = #{setlogId}
           AND deleted_at IS NULL
+    </select>
+
+    <select id="selectTripIdByTripMission" resultType="java.lang.Long">
+        SELECT
+            trip_id
+        FROM trip_mission
+        WHERE trip_mission_id = #{tripMissionId}
     </select>
 
     <insert id="insertSetlogDownloadLog">

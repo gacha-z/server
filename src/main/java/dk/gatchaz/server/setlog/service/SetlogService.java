@@ -3,6 +3,7 @@ package dk.gatchaz.server.setlog.service;
 import dk.gatchaz.server.common.exception.CommonException;
 import dk.gatchaz.server.common.exception.ErrorCode;
 import dk.gatchaz.server.setlog.dto.SetlogDownloadResponse;
+import dk.gatchaz.server.setlog.dto.SetlogFileInfo;
 import dk.gatchaz.server.setlog.dto.SetlogInsertParam;
 import dk.gatchaz.server.setlog.dto.SetlogResponse;
 import dk.gatchaz.server.setlog.dto.SetlogUploadResponse;
@@ -68,31 +69,69 @@ public class SetlogService {
     }
 
     /**
-     * 여행(tripId)의 전체 셋로그 목록을 조회한다.
+     * 여행(tripId)의 전체 셋로그 목록을 조회한다. 요청자가 그 여행 참여자가 아니면 예외를 던진다.
      */
     @Transactional(readOnly = true)
-    public List<SetlogResponse> getSetlogsByTrip(final Long tripId) {
+    public List<SetlogResponse> getSetlogsByTrip(final Long tripId, final Long userId) {
+        if (setlogMapper.existsJoinedMember(tripId, userId) == 0) {
+            throw new CommonException(ErrorCode.NOT_FOUND_TRIP_MEMBER);
+        }
         return setlogMapper.selectSetlogsByTrip(tripId);
     }
 
     /**
      * 특정 진행 미션(tripMissionId)의 셋로그 목록을 조회한다. (미션 완료 검증용)
+     * 요청자가 그 여행 참여자가 아니면 예외를 던진다.
      */
     @Transactional(readOnly = true)
-    public List<SetlogResponse> getSetlogsByMission(final Long tripMissionId) {
+    public List<SetlogResponse> getSetlogsByMission(final Long tripMissionId, final Long userId) {
+        requireTripMissionMember(tripMissionId, userId);
         return setlogMapper.selectSetlogsByMission(tripMissionId);
     }
 
     /**
-     * 셋로그(setlogId)를 다운로드한다. 다운로드 시도 이력을 남기고 영상 URL 을 반환한다.
+     * 본인이 촬영한 셋로그(setlogId)를 다운로드한다. 다운로드 시도 이력을 남기고 영상 URL 을 반환한다.
+     * 없으면 404(NOT_FOUND_SETLOG), 본인이 촬영한 것이 아니면 403(NOT_SETLOG_OWNER)을 던진다.
      */
     @Transactional
     public SetlogDownloadResponse downloadSetlog(final Long setlogId, final Long userId) {
-        final String fileUrl = setlogMapper.selectFileUrlById(setlogId);
-        if (fileUrl == null) {
+        final SetlogFileInfo info = setlogMapper.selectSetlogFileInfo(setlogId);
+        if (info == null) {
             throw new CommonException(ErrorCode.NOT_FOUND_SETLOG);
         }
+        if (!info.getMemberId().equals(userId)) {
+            throw new CommonException(ErrorCode.NOT_SETLOG_OWNER);
+        }
         setlogMapper.insertSetlogDownloadLog(setlogId, userId, "SUCCESS");
-        return new SetlogDownloadResponse(fileUrl);
+        return new SetlogDownloadResponse(info.getFileUrl());
+    }
+
+    /**
+     * 같은 여행 참여자(본인 포함)가 진행 미션(tripMissionId)에 등록된 팀원 전체의 셋로그를 한 번에 다운로드한다.
+     * 반환하는 각 셋로그마다 다운로드 시도 이력을 남긴다. 요청자가 그 여행 참여자가 아니면 예외를 던진다.
+     */
+    @Transactional
+    public List<SetlogResponse> downloadSetlogsByMission(final Long tripMissionId, final Long userId) {
+        requireTripMissionMember(tripMissionId, userId);
+
+        final List<SetlogResponse> setlogs = setlogMapper.selectSetlogsByMission(tripMissionId);
+        for (final SetlogResponse setlog : setlogs) {
+            setlogMapper.insertSetlogDownloadLog(setlog.getSetlogId(), userId, "SUCCESS");
+        }
+        return setlogs;
+    }
+
+    /**
+     * 요청자(userId)가 해당 진행 미션(tripMissionId)이 속한 여행의 참여자인지 확인한다.
+     * 진행 미션이 없으면 404(NOT_FOUND_TRIP_MISSION), 참여자가 아니면 404(NOT_FOUND_TRIP_MEMBER)를 던진다.
+     */
+    private void requireTripMissionMember(final Long tripMissionId, final Long userId) {
+        final Long tripId = setlogMapper.selectTripIdByTripMission(tripMissionId);
+        if (tripId == null) {
+            throw new CommonException(ErrorCode.NOT_FOUND_TRIP_MISSION);
+        }
+        if (setlogMapper.existsJoinedMember(tripId, userId) == 0) {
+            throw new CommonException(ErrorCode.NOT_FOUND_TRIP_MEMBER);
+        }
     }
 }

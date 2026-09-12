@@ -60,31 +60,50 @@ public class SetlogController {
     /**
      * 여행별 셋로그 목록 조회
      */
-    @Operation(summary = "여행별 셋로그 목록 조회", description = "여행(tripId)의 전체 셋로그 목록을 진행 미션 순, 슬롯 순으로 조회한다. (여행 기록/진행 중 화면 공통)")
+    @Operation(summary = "여행별 셋로그 목록 조회", description = "여행(tripId)의 전체 셋로그 목록을 진행 미션 순, 슬롯 순으로 조회한다. (여행 기록/진행 중 화면 공통) "
+            + "요청자가 그 여행 참여자가 아니면 404(NOT_FOUND_TRIP_MEMBER)를 반환한다.")
     @GetMapping("/trips/{tripId}/setlogs")
     public ResponseDto<List<SetlogResponse>> getSetlogsByTrip(
+            @UserId final Long userId,
             @Parameter(description = "여행 ID", example = "1") @PathVariable final Long tripId) {
-        return ResponseDto.ok(setlogService.getSetlogsByTrip(tripId));
+        return ResponseDto.ok(setlogService.getSetlogsByTrip(tripId, userId));
     }
 
     /**
      * 미션별 셋로그 조회
      */
-    @Operation(summary = "미션별 셋로그 조회", description = "특정 진행 미션(tripMissionId)의 셋로그 목록을 슬롯 순으로 조회한다. (미션 완료 검증/촬영 현황 확인용)")
+    @Operation(summary = "미션별 셋로그 조회", description = "특정 진행 미션(tripMissionId)의 셋로그 목록을 슬롯 순으로 조회한다. (미션 완료 검증/촬영 현황 확인용) "
+            + "요청자가 그 여행 참여자가 아니면 404(NOT_FOUND_TRIP_MEMBER)를 반환한다.")
     @GetMapping("/missions/{tripMissionId}/setlogs")
     public ResponseDto<List<SetlogResponse>> getSetlogsByMission(
+            @UserId final Long userId,
             @Parameter(description = "진행 미션(trip_mission) ID", example = "1") @PathVariable final Long tripMissionId) {
-        return ResponseDto.ok(setlogService.getSetlogsByMission(tripMissionId));
+        return ResponseDto.ok(setlogService.getSetlogsByMission(tripMissionId, userId));
     }
 
     /**
-     * 셋로그 다운로드
+     * 내 셋로그 다운로드
      */
-    @Operation(summary = "셋로그 다운로드", description = "셋로그(setlogId)의 영상 URL을 반환한다. 다운로드 시도 이력이 setlog_download_log 에 기록된다. 없는 셋로그면 404 를 반환한다.")
+    @Operation(summary = "내 셋로그 다운로드", description = "본인이 촬영한 셋로그(setlogId)의 영상 URL을 반환한다. 다운로드 시도 이력이 setlog_download_log 에 기록된다. "
+            + "없으면 404(NOT_FOUND_SETLOG), 본인이 촬영한 것이 아니면 403(NOT_SETLOG_OWNER)을 반환한다. "
+            + "(같은 여행 팀원 전체의 셋로그를 한 번에 받으려면 GET /missions/{tripMissionId}/setlogs/download 를 쓴다)")
     @GetMapping("/setlogs/{setlogId}/download")
     public ResponseDto<SetlogDownloadResponse> downloadSetlog(
-            @Parameter(description = "셋로그 ID", example = "1") @PathVariable final Long setlogId,
-            @UserId final Long userId) {
+            @UserId final Long userId,
+            @Parameter(description = "셋로그 ID", example = "1") @PathVariable final Long setlogId) {
         return ResponseDto.ok(setlogService.downloadSetlog(setlogId, userId));
+    }
+
+    /**
+     * 미션 팀원 전체 셋로그 다운로드
+     */
+    @Operation(summary = "미션 팀원 전체 셋로그 다운로드", description = "같은 여행 참여자(본인 포함)가 진행 미션(tripMissionId)에 등록된 팀원 전체의 셋로그를 한 번에 다운로드한다. "
+            + "반환하는 각 셋로그마다 다운로드 시도 이력이 setlog_download_log 에 기록된다. "
+            + "요청자가 그 여행 참여자가 아니면 404(NOT_FOUND_TRIP_MEMBER)를 반환한다.")
+    @GetMapping("/missions/{tripMissionId}/setlogs/download")
+    public ResponseDto<List<SetlogResponse>> downloadSetlogsByMission(
+            @UserId final Long userId,
+            @Parameter(description = "진행 미션(trip_mission) ID", example = "1") @PathVariable final Long tripMissionId) {
+        return ResponseDto.ok(setlogService.downloadSetlogsByMission(tripMissionId, userId));
     }
 }

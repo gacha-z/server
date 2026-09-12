@@ -47,6 +47,7 @@ public enum ErrorCode {
     ACCESS_DENIED_ERROR(40300, HttpStatus.FORBIDDEN, "접근 권한이 없습니다."),
     NOT_DIARY_OWNER(40302, HttpStatus.FORBIDDEN, "본인이 작성한 일기만 수정/삭제할 수 있습니다."),
     NOT_DEVICE_OWNER(40303, HttpStatus.FORBIDDEN, "본인 소유의 디바이스만 변경할 수 있습니다."),
+    NOT_SETLOG_OWNER(40304, HttpStatus.FORBIDDEN, "본인이 촬영한 셋로그만 다운로드할 수 있습니다."),
 
     NOT_FOUND_USER(40401, HttpStatus.NOT_FOUND, "해당 사용자가 존재하지 않습니다."),
     NOT_FOUND_METADATA_ITEM(40402,HttpStatus.NOT_FOUND,"해당 메타데이터 항목이 존재하지 않습니다."),

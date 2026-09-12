@@ -1,5 +1,6 @@
 package dk.gatchaz.server.setlog.mapper;
 
+import dk.gatchaz.server.setlog.dto.SetlogFileInfo;
 import dk.gatchaz.server.setlog.dto.SetlogInsertParam;
 import dk.gatchaz.server.setlog.dto.SetlogResponse;
 import org.apache.ibatis.annotations.Mapper;
@@ -47,9 +48,14 @@ public interface SetlogMapper {
     List<SetlogResponse> selectSetlogsByMission(@Param("tripMissionId") Long tripMissionId);
 
     /**
-     * 셋로그(setlogId)의 영상 URL을 조회한다. 없거나 삭제된 셋로그면 null.
+     * 셋로그(setlogId)의 소유자(memberId)와 영상 URL을 조회한다. 없거나 삭제된 셋로그면 null.
      */
-    String selectFileUrlById(@Param("setlogId") Long setlogId);
+    SetlogFileInfo selectSetlogFileInfo(@Param("setlogId") Long setlogId);
+
+    /**
+     * 진행 미션(tripMissionId)이 속한 여행(tripId)을 조회한다. 없으면 null.
+     */
+    Long selectTripIdByTripMission(@Param("tripMissionId") Long tripMissionId);
 
     /**
      * 다운로드 시도 이력을 setlog_download_log 에 기록한다.
