@@ -160,7 +160,7 @@ public class MissionService {
      */
     @Transactional
     public void completeMission(final Long tripId, final Long tripMissionId, final MissionCompleteRequest request,
-                                 final Long memberId) {
+                                 final Long userId) {
         // 1. 진행 중인 미션인지 확인
         if (missionMapper.existsInProgressTripMission(tripId, tripMissionId) == 0) {
             throw new CommonException(ErrorCode.NOT_FOUND_TRIP_MISSION);
@@ -178,7 +178,7 @@ public class MissionService {
         final TripRegionCoordinate region = missionMapper.selectTripRegionCoordinate(tripId);
         if (region == null || region.getLatitude() == null || region.getLongitude() == null) {
             locationVerificationRecorder.record(
-                    tripId, tripMissionId, memberId,
+                    tripId, tripMissionId, userId,
                     request.getLatitude(), request.getLongitude(), null, false);
             throw new CommonException(ErrorCode.LOCATION_VERIFICATION_FAILED);
         }
@@ -187,7 +187,7 @@ public class MissionService {
                 region.getLatitude(), region.getLongitude(), request.getLatitude(), request.getLongitude());
         final boolean success = distanceMeter <= LOCATION_VERIFICATION_RADIUS_METER;
         locationVerificationRecorder.record(
-                tripId, tripMissionId, memberId,
+                tripId, tripMissionId, userId,
                 request.getLatitude(), request.getLongitude(), BigDecimal.valueOf(distanceMeter), success);
         if (!success) {
             throw new CommonException(ErrorCode.LOCATION_VERIFICATION_FAILED);
@@ -339,7 +339,7 @@ public class MissionService {
      * 5. 리롤 이력을 기록한다.
      */
     @Transactional
-    public MissionCandidateResponse rerollMission(final Long tripId, final Long missionCandidateId, final Long memberId) {
+    public MissionCandidateResponse rerollMission(final Long tripId, final Long missionCandidateId, final Long userId) {
         // 1. 리롤 가능한 후보인지 확인
         final MissionCandidateRerollInfo candidate = missionMapper.selectCandidateForReroll(tripId, missionCandidateId);
         if (candidate == null) {

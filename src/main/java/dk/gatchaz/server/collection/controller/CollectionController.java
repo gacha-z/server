@@ -29,8 +29,8 @@ public class CollectionController {
             summary = "아이템 도감 목록 조회",
             description = "전체 지역 아이템 목록을 회원 기준 보유 여부(acquiredYn)와 함께 반환한다.")
     @GetMapping("/items")
-    public ResponseDto<List<CollectionItemResponse>> getItems(@UserId final Long memberId) {
-        return ResponseDto.ok(collectionService.getItems(memberId));
+    public ResponseDto<List<CollectionItemResponse>> getItems(@UserId final Long userId) {
+        return ResponseDto.ok(collectionService.getItems(userId));
     }
 
     /**
@@ -40,7 +40,7 @@ public class CollectionController {
             summary = "배지 목록 조회",
             description = "전체 배지 목록을 회원 기준 진행 횟수(currentCount)/달성 여부(achievedYn)와 함께 반환한다.")
     @GetMapping("/badges")
-    public ResponseDto<List<BadgeResponse>> getBadges(@UserId final Long memberId) {
-        return ResponseDto.ok(collectionService.getBadges(memberId));
+    public ResponseDto<List<BadgeResponse>> getBadges(@UserId final Long userId) {
+        return ResponseDto.ok(collectionService.getBadges(userId));
     }
 }

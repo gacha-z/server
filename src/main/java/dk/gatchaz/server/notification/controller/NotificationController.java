@@ -49,12 +49,12 @@ public class NotificationController {
                     """)
     @GetMapping
     public ResponseDto<NotificationListResponse> getNotifications(
-            @UserId final Long memberId,
+            @UserId final Long userId,
             @Parameter(description = "무한 스크롤 커서. 이전 응답의 nextCursor 값을 넣는다. 첫 조회 시 비운다.", example = "12")
             @RequestParam(required = false) final Long cursor,
             @Parameter(description = "한 번에 조회할 개수 (기본 20, 1~50 범위를 벗어나면 자동 보정)", example = "20")
             @RequestParam(required = false, defaultValue = "20") final int size) {
-        return ResponseDto.ok(notificationService.getNotifications(memberId, cursor, size));
+        return ResponseDto.ok(notificationService.getNotifications(userId, cursor, size));
     }
 
     /**
@@ -72,8 +72,8 @@ public class NotificationController {
     @PatchMapping("/{notificationId}/read")
     public ResponseDto<Void> readNotification(
             @Parameter(description = "읽음 처리할 알림 ID", example = "12") @PathVariable final Long notificationId,
-            @UserId final Long memberId) {
-        notificationService.readNotification(notificationId, memberId);
+            @UserId final Long userId) {
+        notificationService.readNotification(notificationId, userId);
         return ResponseDto.<Void>ok(null);
     }
 }

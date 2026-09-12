@@ -30,13 +30,13 @@ public class CollectionService {
     private final CollectionMapper collectionMapper;
 
     @Transactional(readOnly = true)
-    public List<CollectionItemResponse> getItems(final Long memberId) {
-        return collectionMapper.selectItems(memberId);
+    public List<CollectionItemResponse> getItems(final Long userId) {
+        return collectionMapper.selectItems(userId);
     }
 
     @Transactional(readOnly = true)
-    public List<BadgeResponse> getBadges(final Long memberId) {
-        return collectionMapper.selectBadges(memberId);
+    public List<BadgeResponse> getBadges(final Long userId) {
+        return collectionMapper.selectBadges(userId);
     }
 
     /**

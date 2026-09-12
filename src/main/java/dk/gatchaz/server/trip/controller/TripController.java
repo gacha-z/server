@@ -50,9 +50,9 @@ public class TripController {
     @Operation(summary = "여행 생성", description = "화면 입력값으로 여행을 생성하고 생성자를 OWNER 로 등록한다. 지역은 이 단계에서 선택하지 않으며(trip_region_id 는 NULL), 반환된 tripId 로 추천/리롤 후 지역 선택 API 를 호출한다.")
     @PostMapping
     public ResponseDto<TripCreateResponse> createTrip(
-            @UserId final Long memberId,
+            @UserId final Long userId,
             @Valid @RequestBody final TripCreateRequest request) {
-        return ResponseDto.created(tripService.createTrip(request, memberId));
+        return ResponseDto.created(tripService.createTrip(request, userId));
     }
 
     /**
@@ -93,9 +93,9 @@ public class TripController {
             @RequestParam(required = false) final Long cursor,
             @Parameter(description = "한 번에 조회할 개수 (기본 10, 1~50 범위를 벗어나면 자동 보정)", example = "10")
             @RequestParam(required = false, defaultValue = "10") final int size,
-            @UserId final Long memberId) {
+            @UserId final Long userId) {
         final TripSearchRequest request =
-                new TripSearchRequest(title, tripRegionId, status, dateFrom, dateTo, cursor, size, memberId);
+                new TripSearchRequest(title, tripRegionId, status, dateFrom, dateTo, cursor, size, userId);
         return ResponseDto.ok(tripService.getTrips(request));
     }
 
@@ -130,7 +130,7 @@ public class TripController {
 
                     ### 수정 방식 (부분 수정)
                     - 수정 가능 필드: `title`, `startDate`, `endDate`, `memberLimit`, `missionMin`, `missionMax`, `missionStartTime`
-                      → 바꾸고 싶은 필드만 담아 보낸다. (`requestMemberId` 는 항상 필수)
+                      → 바꾸고 싶은 필드만 담아 보낸다.
                     - 첫 미션 일시는 시작일·미션 시작 시각 중 하나라도 바뀌면 **최종 startDate + 최종 missionStartTime** 으로 재계산된다.
                       (예: `startDate` 만 보내면 기존 시각을 유지한 채 첫 미션 날짜만 새 시작일로 이동)
                     - 수정할 필드를 하나도 보내지 않으면 아무것도 변경하지 않고 현재 상세 정보를 반환한다.
@@ -139,16 +139,16 @@ public class TripController {
 
                     ### 실패 응답
                     - 여행이 없으면 **404** (NOT_FOUND_TRIP)
-                    - 요청자(`requestMemberId`)가 방장이 아니면 **403** (NOT_TRIP_OWNER)
+                    - 요청자가 방장이 아니면 **403** (NOT_TRIP_OWNER)
                     - `memberLimit` 을 현재 참여 인원보다 작게 보내면 **400** (TRIP_MEMBER_LIMIT_BELOW_JOINED)
-                    - `title` 을 공백으로 보내거나 `requestMemberId` 누락 등 형식 오류는 **400** (INVALID_ARGUMENT)
+                    - `title` 을 공백으로 보내는 등 형식 오류는 **400** (INVALID_ARGUMENT)
                     """)
     @PatchMapping("/{tripId}")
     public ResponseDto<TripDetailResponse> updateTrip(
             @Parameter(description = "수정할 여행 ID", example = "1") @PathVariable final Long tripId,
-            @UserId final Long requestMemberId,
+            @UserId final Long userId,
             @Valid @RequestBody final TripUpdateRequest request) {
-        return ResponseDto.ok(tripService.updateTrip(tripId, request, requestMemberId));
+        return ResponseDto.ok(tripService.updateTrip(tripId, request, userId));
     }
 
     /**
@@ -179,7 +179,7 @@ public class TripController {
                     방장(여행 생성자)이 팀원을 여행에서 강퇴한다. 강퇴된 팀원은 팀원 목록에서 제외되고 정원에서 빠진다.
 
                     ### 실패 응답
-                    - 요청자(`requestMemberId`)가 방장이 아니면 **403** (NOT_TRIP_OWNER)
+                    - 요청자가 방장이 아니면 **403** (NOT_TRIP_OWNER)
                     - 방장 자신을 강퇴하려 하면 **400** (CANNOT_KICK_TRIP_OWNER)
                     - 여행이 없으면 **404** (NOT_FOUND_TRIP), 대상이 참여 중인 팀원이 아니면 **404** (NOT_FOUND_TRIP_MEMBER)
 
@@ -191,8 +191,8 @@ public class TripController {
     public ResponseDto<Void> kickTripMember(
             @Parameter(description = "여행 ID", example = "1") @PathVariable final Long tripId,
             @Parameter(description = "강퇴할 팀원 회원 ID", example = "2") @PathVariable final Long memberId,
-            @UserId final Long requestMemberId) {
-        tripService.kickTripMember(tripId, memberId, requestMemberId);
+            @UserId final Long userId) {
+        tripService.kickTripMember(tripId, memberId, userId);
         return ResponseDto.<Void>ok(null);
     }
 
@@ -238,9 +238,9 @@ public class TripController {
     @Operation(summary = "여행 참여", description = "초대 링크의 코드로 회원을 여행에 참여시킨다. 유효하지 않은 코드, 참여 불가 상태, 이미 참여 중, 정원 초과 시 실패한다. 이전에 나갔거나(LEFT) 강퇴된(KICKED) 회원도 다시 참여할 수 있다. (재참여 시 새 참여 이력 생성)")
     @PostMapping("/join")
     public ResponseDto<TripJoinResponse> joinTrip(
-            @UserId final Long memberId,
+            @UserId final Long userId,
             @Valid @RequestBody final TripJoinRequest request) {
-        return ResponseDto.ok(tripService.joinTrip(request.getCode(), memberId));
+        return ResponseDto.ok(tripService.joinTrip(request.getCode(), userId));
     }
 
     /**
@@ -253,7 +253,7 @@ public class TripController {
 
                     ### 실패 응답
                     - 여행이 없으면 **404** (NOT_FOUND_TRIP)
-                    - 요청자(`requestMemberId`)가 방장이 아니면 **403** (NOT_TRIP_OWNER)
+                    - 요청자가 방장이 아니면 **403** (NOT_TRIP_OWNER)
                     - 위임 대상이 현재 방장 자신이면 **400** (ALREADY_TRIP_OWNER)
                     - 위임 대상이 참여 중인 팀원이 아니면 **404** (NOT_FOUND_TRIP_MEMBER)
 
@@ -266,8 +266,8 @@ public class TripController {
             @Parameter(description = "여행 ID", example = "1") @PathVariable final Long tripId,
             @Parameter(description = "방장을 위임받을 팀원 회원 ID", example = "2")
             @RequestParam final Long newOwnerMemberId,
-            @UserId final Long requestMemberId) {
-        tripService.transferTripOwner(tripId, newOwnerMemberId, requestMemberId);
+            @UserId final Long userId) {
+        tripService.transferTripOwner(tripId, newOwnerMemberId, userId);
         return ResponseDto.<Void>ok(null);
     }
 
@@ -295,8 +295,8 @@ public class TripController {
     @PostMapping("/{tripId}/leave")
     public ResponseDto<Void> leaveTrip(
             @Parameter(description = "나갈 여행 ID", example = "1") @PathVariable final Long tripId,
-            @UserId final Long memberId) {
-        tripService.leaveTrip(tripId, memberId);
+            @UserId final Long userId) {
+        tripService.leaveTrip(tripId, userId);
         return ResponseDto.<Void>ok(null);
     }
 
@@ -315,14 +315,14 @@ public class TripController {
 
                     ### 실패 응답
                     - 여행이 없으면 **404** (NOT_FOUND_TRIP)
-                    - 요청자(`requestMemberId`)가 방장이 아니면 **403** (NOT_TRIP_OWNER)
+                    - 요청자가 방장이 아니면 **403** (NOT_TRIP_OWNER)
                     - 이미 취소되었거나 완료된 여행이면 **400** (TRIP_NOT_CANCELLABLE)
                     """)
     @PatchMapping("/{tripId}/cancel")
     public ResponseDto<Void> cancelTrip(
             @Parameter(description = "취소할 여행 ID", example = "1") @PathVariable final Long tripId,
-            @UserId final Long requestMemberId) {
-        tripService.cancelTrip(tripId, requestMemberId);
+            @UserId final Long userId) {
+        tripService.cancelTrip(tripId, userId);
         return ResponseDto.<Void>ok(null);
     }
 }

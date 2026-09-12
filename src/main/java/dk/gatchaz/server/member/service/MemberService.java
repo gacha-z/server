@@ -36,12 +36,12 @@ public class MemberService {
     }
 
     /**
-     * 회원(memberId)의 정보를 조회한다. 탈퇴했거나 없으면 예외를 던진다.
+     * 회원(userId)의 정보를 조회한다. 탈퇴했거나 없으면 예외를 던진다.
      */
     @Transactional(readOnly = true)
-    public MemberDetailResponse getMember(final Long memberId) {
-        // memberId 는 컨트롤러에서 @UserId 로 주입된 인증된 사용자 ID 이다.
-        final MemberDetailResponse member = memberMapper.selectMember(memberId);
+    public MemberDetailResponse getMember(final Long userId) {
+        // userId 는 컨트롤러에서 @UserId 로 주입된 인증된 사용자 ID 이다.
+        final MemberDetailResponse member = memberMapper.selectMember(userId);
         if (member == null) {
             throw new CommonException(ErrorCode.NOT_FOUND_USER);
         }
@@ -49,18 +49,18 @@ public class MemberService {
     }
 
     /**
-     * 회원(memberId)의 정보(닉네임/나이)를 부분 수정하고, 수정된 정보를 반환한다.
+     * 회원(userId)의 정보(닉네임/나이)를 부분 수정하고, 수정된 정보를 반환한다.
      * 대상이 없거나 탈퇴한 회원이면 예외를 던진다.
      */
     @Transactional
-    public MemberDetailResponse updateMember(final Long memberId, final MemberUpdateRequest request) {
-        // memberId 는 컨트롤러에서 @UserId 로 주입된 인증된 사용자 ID 이다.
+    public MemberDetailResponse updateMember(final Long userId, final MemberUpdateRequest request) {
+        // userId 는 컨트롤러에서 @UserId 로 주입된 인증된 사용자 ID 이다.
         if (request.getNickname() != null && request.getNickname().isBlank()) {
             throw new CommonException(ErrorCode.INVALID_ARGUMENT);
         }
 
         final MemberUpdateParam param = MemberUpdateParam.builder()
-                .memberId(memberId)
+                .memberId(userId)
                 .nickname(request.getNickname())
                 .age(request.getAge())
                 .build();
@@ -70,17 +70,17 @@ public class MemberService {
             throw new CommonException(ErrorCode.NOT_FOUND_USER);
         }
 
-        return memberMapper.selectMember(memberId);
+        return memberMapper.selectMember(userId);
     }
 
     /**
-     * 회원(memberId)을 탈퇴 처리한다(소프트 삭제). 대상이 없거나 이미 탈퇴한 회원이면 예외를 던진다.
+     * 회원(userId)을 탈퇴 처리한다(소프트 삭제). 대상이 없거나 이미 탈퇴한 회원이면 예외를 던진다.
      */
     @Transactional
-    public void deleteMember(final Long memberId) {
-        // memberId 는 컨트롤러에서 @UserId 로 주입된 인증된 사용자 ID 이다.
+    public void deleteMember(final Long userId) {
+        // userId 는 컨트롤러에서 @UserId 로 주입된 인증된 사용자 ID 이다.
         // TODO: 관련 데이터(여행 참여 이력, 도감 등) 삭제/익명화 정책 확정 후 반영 (현재 기획상 미확정 — 회원 소프트 삭제만 처리)
-        final int deleted = memberMapper.softDeleteMember(memberId);
+        final int deleted = memberMapper.softDeleteMember(userId);
         if (deleted == 0) {
             throw new CommonException(ErrorCode.NOT_FOUND_USER);
         }

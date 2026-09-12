@@ -53,8 +53,8 @@ public class AuthController {
 
     @Operation(summary = "로그아웃", description = "현재 로그인된 회원의 모든 리프레시 토큰을 폐기한다. (인증 필요)")
     @PostMapping("/logout")
-    public ResponseDto<Void> logout(@UserId final Long memberId) {
-        authService.logout(memberId);
+    public ResponseDto<Void> logout(@UserId final Long userId) {
+        authService.logout(userId);
         return ResponseDto.<Void>ok(null);
     }
 }

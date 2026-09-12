@@ -119,8 +119,8 @@ public class AuthService {
      * 로그아웃. 회원(memberId)의 유효한 리프레시 토큰을 모두 폐기한다(모든 기기 로그아웃).
      */
     @Transactional
-    public void logout(final Long memberId) {
-        authMapper.revokeAllRefreshTokensByMember(memberId);
+    public void logout(final Long userId) {
+        authMapper.revokeAllRefreshTokensByMember(userId);
     }
 
     private void saveRefreshToken(final Long memberId, final String refreshToken) {

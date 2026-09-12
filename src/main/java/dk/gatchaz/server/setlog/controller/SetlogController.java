@@ -51,10 +51,10 @@ public class SetlogController {
     public ResponseDto<SetlogUploadResponse> uploadSetlog(
             @Parameter(description = "여행 ID", example = "1") @RequestParam final Long tripId,
             @Parameter(description = "진행 미션(trip_mission) ID", example = "1") @RequestParam final Long tripMissionId,
-            @UserId final Long memberId,
+            @UserId final Long userId,
             @Parameter(description = "업로드할 영상 파일 (mp4/mov, 최대 100MB)")
             @RequestParam("file") final MultipartFile file) {
-        return ResponseDto.created(setlogService.uploadSetlog(tripId, tripMissionId, memberId, file));
+        return ResponseDto.created(setlogService.uploadSetlog(tripId, tripMissionId, userId, file));
     }
 
     /**
@@ -84,7 +84,7 @@ public class SetlogController {
     @GetMapping("/setlogs/{setlogId}/download")
     public ResponseDto<SetlogDownloadResponse> downloadSetlog(
             @Parameter(description = "셋로그 ID", example = "1") @PathVariable final Long setlogId,
-            @UserId final Long memberId) {
-        return ResponseDto.ok(setlogService.downloadSetlog(setlogId, memberId));
+            @UserId final Long userId) {
+        return ResponseDto.ok(setlogService.downloadSetlog(setlogId, userId));
     }
 }

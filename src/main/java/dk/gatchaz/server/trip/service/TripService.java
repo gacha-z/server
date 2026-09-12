@@ -50,15 +50,15 @@ public class TripService {
      * 2. 생성자(owner)를 member_rel_trip 에 OWNER 로 등록한다.
      */
     @Transactional
-    public TripCreateResponse createTrip(final TripCreateRequest request, final Long ownerMemberId) {
-        // ownerMemberId 는 컨트롤러에서 @UserId 로 주입된 인증된 사용자 ID 이다.
+    public TripCreateResponse createTrip(final TripCreateRequest request, final Long userId) {
+        // userId 는 컨트롤러에서 @UserId 로 주입된 인증된 사용자 ID 이다. 이 여행의 생성자(owner)가 된다.
 
         // 첫 미션 시각(시·분)을 여행 시작일과 합쳐 저장용 일시로 가공
         final LocalDateTime missionStartAt = LocalDateTime.of(request.getStartDate(), request.getMissionStartTime());
 
         // 1. 화면 입력값으로 trip 생성 (지역 미선택 상태, trip_region_id IS NULL / 초대 코드 영구 발급)
         final TripCreateParam param = TripCreateParam.builder()
-                .ownerMemberId(ownerMemberId)
+                .ownerMemberId(userId)
                 .title(request.getTitle())
                 .startDate(request.getStartDate())
                 .endDate(request.getEndDate())
@@ -74,7 +74,7 @@ public class TripService {
         final Long tripId = param.getTripId();
 
         // 2. 생성자(owner)를 참여자로 등록
-        tripMapper.insertTripMember(tripId, ownerMemberId, ETripMemberRole.OWNER.name());
+        tripMapper.insertTripMember(tripId, userId, ETripMemberRole.OWNER.name());
 
         return new TripCreateResponse(tripId);
     }
@@ -85,14 +85,14 @@ public class TripService {
      */
     @Transactional(readOnly = true)
     public TripListResponse getTrips(final TripSearchRequest request) {
-        // memberId 는 컨트롤러에서 @UserId 로 주입된 인증된 사용자 ID 이다.
-        final Long memberId = request.getMemberId();
+        // userId 는 컨트롤러에서 @UserId 로 주입된 인증된 사용자 ID 이다.
+        final Long userId = request.getMemberId();
 
         // size 범위 보정 (1~50)
         final int size = Math.min(Math.max(request.getSize(), 1), 50);
 
         final TripSearchParam param = TripSearchParam.builder()
-                .memberId(memberId)
+                .memberId(userId)
                 .title(request.getTitle())
                 .tripRegionId(request.getTripRegionId())
                 .status(request.getStatus() == null ? null : request.getStatus().name())
@@ -131,15 +131,15 @@ public class TripService {
      * 3. 시작일 또는 미션 시작 시각이 바뀌면 첫 미션 일시를 "최종 시작일 + 최종 시각"으로 재계산한다.
      */
     @Transactional
-    public TripDetailResponse updateTrip(final Long tripId, final TripUpdateRequest request, final Long requestMemberId) {
-        // requestMemberId 는 컨트롤러에서 @UserId 로 주입된 인증된 사용자 ID 이다.
+    public TripDetailResponse updateTrip(final Long tripId, final TripUpdateRequest request, final Long userId) {
+        // userId 는 컨트롤러에서 @UserId 로 주입된 인증된 사용자 ID 이다.
 
         // 1. 현재 여행 조회 (존재 확인 + 방장 확인 + 미변경 필드의 기존 값 확보)
         final TripDetailResponse current = tripMapper.selectTrip(tripId);
         if (current == null) {
             throw new CommonException(ErrorCode.NOT_FOUND_TRIP);
         }
-        if (!current.getOwnerMemberId().equals(requestMemberId)) {
+        if (!current.getOwnerMemberId().equals(userId)) {
             throw new CommonException(ErrorCode.NOT_TRIP_OWNER);
         }
 
@@ -207,15 +207,15 @@ public class TripService {
      * 3. 참여(JOINED) 중인 팀원이면 강퇴 처리한다. (status 'JOINED' → 'KICKED', left_at 기록)
      */
     @Transactional
-    public void kickTripMember(final Long tripId, final Long memberId, final Long requestMemberId) {
-        // requestMemberId 는 컨트롤러에서 @UserId 로 주입된 인증된 사용자 ID 이다.
+    public void kickTripMember(final Long tripId, final Long memberId, final Long userId) {
+        // userId 는 컨트롤러에서 @UserId 로 주입된 인증된 사용자 ID 이다. memberId 는 강퇴 대상이다.
 
         // 1. 여행 존재 + 방장 확인
         final Long ownerMemberId = tripMapper.selectTripOwnerMemberId(tripId);
         if (ownerMemberId == null) {
             throw new CommonException(ErrorCode.NOT_FOUND_TRIP);
         }
-        if (!ownerMemberId.equals(requestMemberId)) {
+        if (!ownerMemberId.equals(userId)) {
             throw new CommonException(ErrorCode.NOT_TRIP_OWNER);
         }
 
@@ -239,15 +239,15 @@ public class TripService {
      *    (member_rel_trip.role → OWNER, trip.owner_member_id 변경)
      */
     @Transactional
-    public void leaveTrip(final Long tripId, final Long memberId) {
-        // memberId 는 컨트롤러에서 @UserId 로 주입된 인증된 사용자 ID 이다.
+    public void leaveTrip(final Long tripId, final Long userId) {
+        // userId 는 컨트롤러에서 @UserId 로 주입된 인증된 사용자 ID 이다.
 
         final Long ownerMemberId = tripMapper.selectTripOwnerMemberId(tripId);
         if (ownerMemberId == null) {
             throw new CommonException(ErrorCode.NOT_FOUND_TRIP);
         }
 
-        final boolean isOwner = ownerMemberId.equals(memberId);
+        final boolean isOwner = ownerMemberId.equals(userId);
 
         // 1. 방장이 마지막 1명이면 나가기 차단
         if (isOwner && tripMapper.countJoinedMembers(tripId) <= 1) {
@@ -255,7 +255,7 @@ public class TripService {
         }
 
         // 2. 자진 탈퇴 처리 (참여 중이 아니면 실패)
-        final int left = tripMapper.leaveTripMember(tripId, memberId);
+        final int left = tripMapper.leaveTripMember(tripId, userId);
         if (left == 0) {
             throw new CommonException(ErrorCode.NOT_FOUND_TRIP_MEMBER);
         }
@@ -280,15 +280,15 @@ public class TripService {
      * 4. 팀에 남는 기존 방장을 MEMBER 로 변경하고, trip 의 owner_member_id 를 새 방장으로 변경한다.
      */
     @Transactional
-    public void transferTripOwner(final Long tripId, final Long newOwnerMemberId, final Long requestMemberId) {
-        // requestMemberId 는 컨트롤러에서 @UserId 로 주입된 인증된 사용자 ID 이다.
+    public void transferTripOwner(final Long tripId, final Long newOwnerMemberId, final Long userId) {
+        // userId 는 컨트롤러에서 @UserId 로 주입된 인증된 사용자 ID 이다.
 
         // 1. 여행 존재 + 방장 확인
         final Long ownerMemberId = tripMapper.selectTripOwnerMemberId(tripId);
         if (ownerMemberId == null) {
             throw new CommonException(ErrorCode.NOT_FOUND_TRIP);
         }
-        if (!ownerMemberId.equals(requestMemberId)) {
+        if (!ownerMemberId.equals(userId)) {
             throw new CommonException(ErrorCode.NOT_TRIP_OWNER);
         }
 
@@ -313,15 +313,15 @@ public class TripService {
      * 마지막 1명 남은 방장이 여행을 정리할 때 사용한다. 팀원 참여 이력은 그대로 보존된다.
      */
     @Transactional
-    public void cancelTrip(final Long tripId, final Long requestMemberId) {
-        // requestMemberId 는 컨트롤러에서 @UserId 로 주입된 인증된 사용자 ID 이다.
+    public void cancelTrip(final Long tripId, final Long userId) {
+        // userId 는 컨트롤러에서 @UserId 로 주입된 인증된 사용자 ID 이다.
 
         // 1. 여행 존재 + 방장 확인
         final Long ownerMemberId = tripMapper.selectTripOwnerMemberId(tripId);
         if (ownerMemberId == null) {
             throw new CommonException(ErrorCode.NOT_FOUND_TRIP);
         }
-        if (!ownerMemberId.equals(requestMemberId)) {
+        if (!ownerMemberId.equals(userId)) {
             throw new CommonException(ErrorCode.NOT_TRIP_OWNER);
         }
 
@@ -370,7 +370,7 @@ public class TripService {
      * 6. member_rel_trip 에 MEMBER 로 등록한다.
      */
     @Transactional
-    public TripJoinResponse joinTrip(final String code, final Long memberId) {
+    public TripJoinResponse joinTrip(final String code, final Long userId) {
         // 1. 초대 코드로 여행 조회
         final TripJoinInfo trip = tripMapper.selectTripByInviteCode(code);
         if (trip == null) {
@@ -378,7 +378,7 @@ public class TripService {
         }
 
         // 2. 참여하려는 회원이 실제로 존재하는지 확인
-        if (tripMapper.existsMember(memberId) == 0) {
+        if (tripMapper.existsMember(userId) == 0) {
             throw new CommonException(ErrorCode.NOT_FOUND_USER);
         }
 
@@ -388,7 +388,7 @@ public class TripService {
         }
 
         // 4. 현재 참여(JOINED) 중인 회원인지 확인 (나갔거나 강퇴된 회원은 재참여 가능, 새 참여 이력이 생성된다)
-        if (tripMapper.existsTripMember(trip.getTripId(), memberId) > 0) {
+        if (tripMapper.existsTripMember(trip.getTripId(), userId) > 0) {
             throw new CommonException(ErrorCode.ALREADY_JOINED_TRIP);
         }
 
@@ -398,7 +398,7 @@ public class TripService {
         }
 
         // 6. 참여자로 등록
-        tripMapper.insertTripMember(trip.getTripId(), memberId, ETripMemberRole.MEMBER.name());
+        tripMapper.insertTripMember(trip.getTripId(), userId, ETripMemberRole.MEMBER.name());
 
         return new TripJoinResponse(trip.getTripId());
     }

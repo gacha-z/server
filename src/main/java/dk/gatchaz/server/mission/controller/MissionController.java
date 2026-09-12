@@ -96,9 +96,9 @@ public class MissionController {
     public ResponseDto<Void> completeMission(
             @Parameter(description = "여행 ID", example = "1") @PathVariable final Long tripId,
             @Parameter(description = "완료 처리할 진행 미션(trip_mission) ID", example = "1") @PathVariable final Long tripMissionId,
-            @UserId final Long memberId,
+            @UserId final Long userId,
             @Valid @RequestBody final MissionCompleteRequest request) {
-        missionService.completeMission(tripId, tripMissionId, request, memberId);
+        missionService.completeMission(tripId, tripMissionId, request, userId);
         return ResponseDto.<Void>ok(null);
     }
 
@@ -134,7 +134,7 @@ public class MissionController {
     public ResponseDto<MissionCandidateResponse> rerollMission(
             @Parameter(description = "여행 ID", example = "1") @PathVariable final Long tripId,
             @Parameter(description = "리롤할 미션 후보 ID", example = "1") @PathVariable final Long missionCandidateId,
-            @UserId final Long memberId) {
-        return ResponseDto.ok(missionService.rerollMission(tripId, missionCandidateId, memberId));
+            @UserId final Long userId) {
+        return ResponseDto.ok(missionService.rerollMission(tripId, missionCandidateId, userId));
     }
 }

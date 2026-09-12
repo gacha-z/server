@@ -41,8 +41,8 @@ public class MemberController {
      */
     @Operation(summary = "내 정보 조회", description = "회원 ID로 프로필 정보를 조회한다. 탈퇴한 회원이거나 없으면 404 를 반환한다.")
     @GetMapping("/me")
-    public ResponseDto<MemberDetailResponse> getMe(@UserId final Long memberId) {
-        return ResponseDto.ok(memberService.getMember(memberId));
+    public ResponseDto<MemberDetailResponse> getMe(@UserId final Long userId) {
+        return ResponseDto.ok(memberService.getMember(userId));
     }
 
     /**
@@ -56,9 +56,9 @@ public class MemberController {
                     """)
     @PatchMapping("/me")
     public ResponseDto<MemberDetailResponse> updateMe(
-            @UserId final Long memberId,
+            @UserId final Long userId,
             @Valid @RequestBody final MemberUpdateRequest request) {
-        return ResponseDto.ok(memberService.updateMember(memberId, request));
+        return ResponseDto.ok(memberService.updateMember(userId, request));
     }
 
     /**
@@ -66,8 +66,8 @@ public class MemberController {
      */
     @Operation(summary = "회원 탈퇴", description = "회원을 탈퇴 처리한다(소프트 삭제). 이미 탈퇴했거나 없으면 404 를 반환한다.")
     @DeleteMapping("/me")
-    public ResponseDto<Void> deleteMe(@UserId final Long memberId) {
-        memberService.deleteMember(memberId);
+    public ResponseDto<Void> deleteMe(@UserId final Long userId) {
+        memberService.deleteMember(userId);
         return ResponseDto.<Void>ok(null);
     }
 }

@@ -32,7 +32,7 @@ public class SetlogService {
      * 4. S3 에 업로드하고, 렌더링 위치(slot_no)를 서버가 자동 배정해 저장한다.
      */
     @Transactional
-    public SetlogUploadResponse uploadSetlog(final Long tripId, final Long tripMissionId, final Long memberId,
+    public SetlogUploadResponse uploadSetlog(final Long tripId, final Long tripMissionId, final Long userId,
                                               final MultipartFile file) {
         // 1. 진행 중인 미션인지 확인
         if (setlogMapper.existsInProgressTripMission(tripId, tripMissionId) == 0) {
@@ -40,12 +40,12 @@ public class SetlogService {
         }
 
         // 2. 참여 중인 팀원인지 확인
-        if (setlogMapper.existsJoinedMember(tripId, memberId) == 0) {
+        if (setlogMapper.existsJoinedMember(tripId, userId) == 0) {
             throw new CommonException(ErrorCode.NOT_FOUND_TRIP_MEMBER);
         }
 
         // 3. 재업로드 방지 (이 미션에 이미 셋로그를 등록했으면 실패)
-        if (setlogMapper.existsSetlogByMember(tripMissionId, memberId) > 0) {
+        if (setlogMapper.existsSetlogByMember(tripMissionId, userId) > 0) {
             throw new CommonException(ErrorCode.ALREADY_EXISTS_SETLOG);
         }
 
@@ -57,14 +57,14 @@ public class SetlogService {
         final SetlogInsertParam param = SetlogInsertParam.builder()
                 .tripId(tripId)
                 .tripMissionId(tripMissionId)
-                .memberId(memberId)
+                .memberId(userId)
                 .fileUrl(fileUrl)
                 .slotNo(slotNo)
                 .status(ESetlogStatus.ACTIVE.name())
                 .build();
         setlogMapper.insertSetlog(param);
 
-        return new SetlogUploadResponse(param.getSetlogId(), tripMissionId, memberId, fileUrl, slotNo, LocalDateTime.now());
+        return new SetlogUploadResponse(param.getSetlogId(), tripMissionId, userId, fileUrl, slotNo, LocalDateTime.now());
     }
 
     /**
@@ -87,12 +87,12 @@ public class SetlogService {
      * 셋로그(setlogId)를 다운로드한다. 다운로드 시도 이력을 남기고 영상 URL 을 반환한다.
      */
     @Transactional
-    public SetlogDownloadResponse downloadSetlog(final Long setlogId, final Long memberId) {
+    public SetlogDownloadResponse downloadSetlog(final Long setlogId, final Long userId) {
         final String fileUrl = setlogMapper.selectFileUrlById(setlogId);
         if (fileUrl == null) {
             throw new CommonException(ErrorCode.NOT_FOUND_SETLOG);
         }
-        setlogMapper.insertSetlogDownloadLog(setlogId, memberId, "SUCCESS");
+        setlogMapper.insertSetlogDownloadLog(setlogId, userId, "SUCCESS");
         return new SetlogDownloadResponse(fileUrl);
     }
 }
