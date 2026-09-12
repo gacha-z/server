@@ -6,11 +6,10 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 /**
  * 여행 팀원 일기 요약 정보 (날짜별 목록 조회 전용).
- * 본문/공개범위/AI 생성여부/상태는 포함하지 않는다 - 목록에서는 "누가 썼는지"만 보여주고,
+ * 본문/공개범위/AI 생성여부/상태/생성·수정 일시는 포함하지 않는다 - 목록에서는 "누가 썼는지"만 보여주고,
  * 본문 등 상세 내용은 단건 조회(GET /trips/{tripId}/diaries/{diaryId})에서 확인한다.
  */
 @Getter
@@ -28,12 +27,9 @@ public class DiarySummaryResponse {
     @Schema(description = "작성자 회원 ID", example = "1")
     private Long memberId;
 
+    @Schema(description = "작성자 닉네임", example = "산민")
+    private String nickname;
+
     @Schema(description = "일기 날짜", example = "2026-08-01")
     private LocalDate diaryDate;
-
-    @Schema(description = "생성 일시", example = "2026-08-01T10:00:00")
-    private LocalDateTime createdAt;
-
-    @Schema(description = "수정 일시. 수정 이력이 없으면 null", example = "2026-08-01T12:00:00")
-    private LocalDateTime updatedAt;
 }

@@ -33,14 +33,11 @@
             d.diary_id,
             d.trip_id,
             d.member_id,
+            m.nickname,
             d.content,
-            d.diary_date,
-            d.visibility,
-            d.status,
-            d.is_ai_generated,
-            d.created_at,
-            d.updated_at
+            d.diary_date
         FROM diary d
+        LEFT JOIN member m ON m.member_id = d.member_id
         WHERE d.diary_id = #{diaryId}
           AND (d.status IS NULL OR d.status != 'DELETED')
     </select>
@@ -59,14 +56,11 @@
             d.diary_id,
             d.trip_id,
             d.member_id,
+            m.nickname,
             d.content,
-            d.diary_date,
-            d.visibility,
-            d.status,
-            d.is_ai_generated,
-            d.created_at,
-            d.updated_at
+            d.diary_date
         FROM diary d
+        LEFT JOIN member m ON m.member_id = d.member_id
         <where>
             AND (d.status IS NULL OR d.status != 'DELETED')
             <if test="memberId != null">
@@ -145,10 +139,10 @@
             d.diary_id,
             d.trip_id,
             d.member_id,
-            d.diary_date,
-            d.created_at,
-            d.updated_at
+            m.nickname,
+            d.diary_date
         FROM diary d
+        LEFT JOIN member m ON m.member_id = d.member_id
         WHERE d.trip_id = #{tripId}
           AND d.diary_date = #{diaryDate}
           AND (d.status IS NULL OR d.status != 'DELETED')
