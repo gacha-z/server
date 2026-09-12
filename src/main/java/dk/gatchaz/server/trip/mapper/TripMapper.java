@@ -152,6 +152,7 @@ public interface TripMapper {
 
     /**
      * 추천된 지역 목록을 해당 여행(tripId)의 후보로 trip_candidate 에 저장한다. (selected_yn = 'N', reroll_count = 1)
+     * 생성된 trip_candidate_id 는 각 region.tripCandidateId 에 채워진다(클라이언트가 리롤 호출 때 넘겨야 하는 값).
      */
     int insertTripCandidates(@Param("regions") List<TripRegionDto> regions, @Param("tripId") Long tripId);
 
@@ -175,10 +176,11 @@ public interface TripMapper {
     int deactivateTripCandidate(@Param("tripCandidateId") Long tripCandidateId, @Param("tripId") Long tripId);
 
     /**
-     * 리롤로 새로 추천된 지역을 해당 여행(tripId)의 활성 후보(selected_yn = 'N', use_yn = 'Y')로 저장한다.
-     * reroll_count 에는 직전 후보의 남은 횟수에서 1 감소한 값을 넣는다.
+     * 리롤로 새로 추천된 지역(region)을 해당 여행(tripId)의 활성 후보(selected_yn = 'N', use_yn = 'Y')로 저장한다.
+     * reroll_count 에는 직전 후보의 남은 횟수에서 1 감소한 값을 넣는다. 생성된 trip_candidate_id 는
+     * region.tripCandidateId 에 채워진다(클라이언트가 다음 리롤 호출 때 넘겨야 하는 값).
      */
-    int insertRerolledCandidate(@Param("tripId") Long tripId,
-                                @Param("tripRegionId") Long tripRegionId,
+    int insertRerolledCandidate(@Param("region") TripRegionDto region,
+                                @Param("tripId") Long tripId,
                                 @Param("rerollCount") int rerollCount);
 }

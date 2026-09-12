@@ -112,11 +112,13 @@ public class TripController {
                     - 지역이 확정된 여행이면 지역 정보(`tripRegionId`, `tripRegionName`, `tripRegionImageUrl`)가 채워지고,
                       아직 지역을 선택하지 않았으면 셋 다 null 이다.
                     - 초대 코드는 이 응답에 포함되지 않으며, 별도 API(`GET /api/v1/trips/{tripId}/invite-code`)로 조회한다.
+                    - 요청자가 그 여행 참여자가 아니면 404(NOT_FOUND_TRIP_MEMBER)를 반환한다.
                     """)
     @GetMapping("/{tripId}")
     public ResponseDto<TripDetailResponse> getTrip(
+            @UserId final Long userId,
             @Parameter(description = "조회할 여행 ID", example = "1") @PathVariable final Long tripId) {
-        return ResponseDto.ok(tripService.getTrip(tripId));
+        return ResponseDto.ok(tripService.getTrip(tripId, userId));
     }
 
     /**
@@ -163,11 +165,13 @@ public class TripController {
                     - `role` 은 OWNER(여행 생성자) / MEMBER(참여자) 이다.
                     - 인원이 정원(memberLimit) 이내의 소수이므로 페이징 없이 전체를 반환한다.
                     - `nickname`, `profileImageUrl` 은 회원이 설정하지 않았으면 null 일 수 있다.
+                    - 요청자가 그 여행 참여자가 아니면 404(NOT_FOUND_TRIP_MEMBER)를 반환한다.
                     """)
     @GetMapping("/{tripId}/members")
     public ResponseDto<List<TripMemberResponse>> getTripMembers(
+            @UserId final Long userId,
             @Parameter(description = "조회할 여행 ID", example = "1") @PathVariable final Long tripId) {
-        return ResponseDto.ok(tripService.getTripMembers(tripId));
+        return ResponseDto.ok(tripService.getTripMembers(tripId, userId));
     }
 
     /**
@@ -199,37 +203,49 @@ public class TripController {
     /**
      * 최종 선택한 여행 지역 확정
      */
-    @Operation(summary = "여행 지역 선택", description = "사용자가 최종 선택한 지역(tripRegionId)을 여행(tripId)에 반영한다. 해당 후보를 selected_yn='Y'로 확정하고 trip_region_id 를 저장한다. 하나라도 실패하면 전체 롤백된다.")
+    @Operation(summary = "여행 지역 선택", description = "사용자가 최종 선택한 지역(tripRegionId)을 여행(tripId)에 반영한다. 해당 후보를 selected_yn='Y'로 확정하고 trip_region_id 를 저장한다. 하나라도 실패하면 전체 롤백된다. 요청자가 그 여행 참여자가 아니면 404(NOT_FOUND_TRIP_MEMBER)를 반환한다.")
     @PatchMapping("/regions/select")
-    public ResponseDto<TripCreateResponse> selectTripRegion(@Valid @RequestBody final TripRegionSelectRequest request) {
-        return ResponseDto.ok(tripService.selectTripRegion(request.getTripId(), request.getTripRegionId()));
+    public ResponseDto<TripCreateResponse> selectTripRegion(
+            @UserId final Long userId,
+            @Valid @RequestBody final TripRegionSelectRequest request) {
+        return ResponseDto.ok(tripService.selectTripRegion(request.getTripId(), request.getTripRegionId(), userId));
     }
 
     /**
      * 여행 생성 시 랜덤 지역 3개 추천
      */
-    @Operation(summary = "랜덤 여행 지역 3개 추천", description = "use_yn = 'Y' 이고 해당 여행에서 아직 선택되지 않은 지역 중 무작위로 3개를 조회한다.")
+    @Operation(summary = "랜덤 여행 지역 3개 추천", description = "use_yn = 'Y' 이고 해당 여행에서 아직 선택되지 않은 지역 중 무작위로 3개를 조회한다. "
+            + "응답의 각 tripCandidateId 는 이 지역을 리롤하고 싶을 때 PATCH /trips/regions/reroll 에 넘기는 값이다. "
+            + "요청자가 그 여행 참여자가 아니면 404(NOT_FOUND_TRIP_MEMBER)를 반환한다.")
     @GetMapping("/regions/random")
-    public ResponseDto<List<TripRegionDto>> getRandomRegions(@RequestParam final Long tripId) {
-        return ResponseDto.ok(tripService.getRandomRegions(tripId));
+    public ResponseDto<List<TripRegionDto>> getRandomRegions(
+            @UserId final Long userId,
+            @RequestParam final Long tripId) {
+        return ResponseDto.ok(tripService.getRandomRegions(tripId, userId));
     }
 
     /**
      * 추천된 후보 1개를 다른 지역으로 리롤(교체)
      */
-    @Operation(summary = "추천 여행 지역 리롤", description = "특정 후보(tripCandidateId)를 기존 후보와 중복되지 않는 새 지역으로 교체한다. 후보당 1회만 가능하다.")
+    @Operation(summary = "추천 여행 지역 리롤", description = "특정 후보(tripCandidateId)를 기존 후보와 중복되지 않는 새 지역으로 교체한다. 후보당 1회만 가능하다. "
+            + "응답에 담긴 새 tripCandidateId 를 다시 리롤하고 싶을 때 넘긴다. 요청자가 그 여행 참여자가 아니면 404(NOT_FOUND_TRIP_MEMBER)를 반환한다.")
     @PatchMapping("/regions/reroll")
-    public ResponseDto<TripRegionDto> rerollRegion(@Valid @RequestBody final TripRerollRequest request) {
-        return ResponseDto.ok(tripService.rerollRegion(request.getTripId(), request.getTripCandidateId()));
+    public ResponseDto<TripRegionDto> rerollRegion(
+            @UserId final Long userId,
+            @Valid @RequestBody final TripRerollRequest request) {
+        return ResponseDto.ok(tripService.rerollRegion(request.getTripId(), request.getTripCandidateId(), userId));
     }
 
     /**
      * 여행 초대 코드 조회
      */
-    @Operation(summary = "여행 초대 코드 조회", description = "여행 생성 시 발급된 만료 없는 초대 코드를 반환한다. 프론트에서 도메인을 붙여 링크로 사용한다. (예: travel-gacha.app/trip/{code})")
+    @Operation(summary = "여행 초대 코드 조회", description = "방장(여행 생성자)이 발급된 만료 없는 초대 코드를 조회한다. 프론트에서 도메인을 붙여 링크로 사용한다. (예: travel-gacha.app/trip/{code}) "
+            + "여행이 없으면 404(NOT_FOUND_TRIP), 요청자가 방장이 아니면 403(NOT_TRIP_OWNER)을 반환한다.")
     @GetMapping("/{tripId}/invite-code")
-    public ResponseDto<TripInviteCodeResponse> getInviteCode(@PathVariable final Long tripId) {
-        return ResponseDto.ok(tripService.getInviteCode(tripId));
+    public ResponseDto<TripInviteCodeResponse> getInviteCode(
+            @UserId final Long userId,
+            @Parameter(description = "여행 ID", example = "1") @PathVariable final Long tripId) {
+        return ResponseDto.ok(tripService.getInviteCode(tripId, userId));
     }
 
     /**

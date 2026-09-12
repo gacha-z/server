@@ -360,7 +360,7 @@
         LIMIT #{cnt}
     </select>
 
-    <insert id="insertTripCandidates">
+    <insert id="insertTripCandidates" useGeneratedKeys="true" keyProperty="regions.tripCandidateId" keyColumn="trip_candidate_id">
         INSERT INTO
             trip_candidate(
                 trip_id,
@@ -435,7 +435,7 @@
         </where>
     </update>
 
-    <insert id="insertRerolledCandidate">
+    <insert id="insertRerolledCandidate" useGeneratedKeys="true" keyProperty="region.tripCandidateId" keyColumn="trip_candidate_id">
         INSERT INTO
             trip_candidate(
                 trip_id,
@@ -448,7 +448,7 @@
         VALUES
             (
                 #{tripId},
-                #{tripRegionId},
+                #{region.tripRegionId},
                 'N',
                 #{rerollCount},
                 'Y',

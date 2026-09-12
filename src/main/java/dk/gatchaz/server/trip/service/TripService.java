@@ -112,14 +112,16 @@ public class TripService {
     }
 
     /**
-     * 여행(tripId) 단건의 상세 정보를 조회한다. 없으면 예외를 던진다.
+     * 여행(tripId) 단건의 상세 정보를 조회한다. 없으면 404(NOT_FOUND_TRIP),
+     * 요청자가 그 여행 참여자가 아니면 404(NOT_FOUND_TRIP_MEMBER)를 던진다.
      */
     @Transactional(readOnly = true)
-    public TripDetailResponse getTrip(final Long tripId) {
+    public TripDetailResponse getTrip(final Long tripId, final Long userId) {
         final TripDetailResponse trip = tripMapper.selectTrip(tripId);
         if (trip == null) {
             throw new CommonException(ErrorCode.NOT_FOUND_TRIP);
         }
+        requireTripMember(tripId, userId);
         return trip;
     }
 
@@ -190,13 +192,15 @@ public class TripService {
     }
 
     /**
-     * 여행(tripId)에 참여(JOINED) 중인 팀원 목록을 참여 등록 순으로 조회한다. 여행이 없으면 예외를 던진다.
+     * 여행(tripId)에 참여(JOINED) 중인 팀원 목록을 참여 등록 순으로 조회한다. 여행이 없으면 404(NOT_FOUND_TRIP),
+     * 요청자가 그 여행 참여자가 아니면 404(NOT_FOUND_TRIP_MEMBER)를 던진다.
      */
     @Transactional(readOnly = true)
-    public List<TripMemberResponse> getTripMembers(final Long tripId) {
+    public List<TripMemberResponse> getTripMembers(final Long tripId, final Long userId) {
         if (tripMapper.existsTrip(tripId) == 0) {
             throw new CommonException(ErrorCode.NOT_FOUND_TRIP);
         }
+        requireTripMember(tripId, userId);
         return tripMapper.selectTripMembers(tripId);
     }
 
@@ -337,6 +341,15 @@ public class TripService {
     }
 
     /**
+     * 요청자(userId)가 해당 여행(tripId)에 참여(JOINED) 중인지 확인한다. 아니면 예외를 던진다.
+     */
+    private void requireTripMember(final Long tripId, final Long userId) {
+        if (tripMapper.existsTripMember(tripId, userId) == 0) {
+            throw new CommonException(ErrorCode.NOT_FOUND_TRIP_MEMBER);
+        }
+    }
+
+    /**
      * 중복되지 않는 초대 코드를 생성한다. 충돌은 사실상 발생하지 않지만, 혹시 존재하면 다시 생성한다.
      */
     private String generateUniqueInviteCode() {
@@ -348,16 +361,19 @@ public class TripService {
     }
 
     /**
-     * 해당 여행(tripId)의 초대 코드를 반환한다. 코드는 생성 시 발급되어 만료되지 않는다.
-     * (프론트에서 도메인을 붙여 링크로 사용)
+     * 방장(여행 생성자)이 해당 여행(tripId)의 초대 코드를 조회한다. 코드는 생성 시 발급되어 만료되지 않는다.
+     * (프론트에서 도메인을 붙여 링크로 사용) 여행이 없으면 404, 요청자가 방장이 아니면 403 을 던진다.
      */
     @Transactional(readOnly = true)
-    public TripInviteCodeResponse getInviteCode(final Long tripId) {
-        final String code = tripMapper.selectInviteCode(tripId);
-        if (code == null) {
+    public TripInviteCodeResponse getInviteCode(final Long tripId, final Long userId) {
+        final Long ownerMemberId = tripMapper.selectTripOwnerMemberId(tripId);
+        if (ownerMemberId == null) {
             throw new CommonException(ErrorCode.NOT_FOUND_TRIP);
         }
-        return new TripInviteCodeResponse(code);
+        if (!ownerMemberId.equals(userId)) {
+            throw new CommonException(ErrorCode.NOT_TRIP_OWNER);
+        }
+        return new TripInviteCodeResponse(tripMapper.selectInviteCode(tripId));
     }
 
     /**
@@ -405,11 +421,14 @@ public class TripService {
 
     /**
      * 사용자가 최종 선택한 지역을 여행에 반영한다. 하나의 트랜잭션으로 처리된다.
+     * 요청자가 그 여행 참여자가 아니면 예외를 던진다.
      * 1. 선택한 지역을 trip_candidate 에서 selected_yn='Y'로 확정한다. (활성 후보가 아니면 실패)
      * 2. 선택한 지역(trip_region_id)을 trip 에 반영한다. (지역 미선택 상태의 trip 이 없으면 실패)
      */
     @Transactional
-    public TripCreateResponse selectTripRegion(final Long tripId, final Long tripRegionId) {
+    public TripCreateResponse selectTripRegion(final Long tripId, final Long tripRegionId, final Long userId) {
+        requireTripMember(tripId, userId);
+
         // 1. 선택한 지역을 후보에서 확정 (선택한 지역이 활성 후보로 존재하지 않으면 잘못된 선택)
         final int selected = tripMapper.markCandidateSelected(tripId, tripRegionId);
         if (selected == 0) {
@@ -428,9 +447,12 @@ public class TripService {
     /**
      * 해당 여행(tripId)에서 아직 선택되지 않은 랜덤 지역 3개를 조회하고,
      * trip_candidate 에 후보(selected_yn = 'N', reroll_count = 1)로 저장한다.
+     * 요청자가 그 여행 참여자가 아니면 예외를 던진다.
      */
     @Transactional
-    public List<TripRegionDto> getRandomRegions(final Long tripId) {
+    public List<TripRegionDto> getRandomRegions(final Long tripId, final Long userId) {
+        requireTripMember(tripId, userId);
+
         List<TripRegionDto> regions = tripMapper.selectRandomRegions(RANDOM_REGION_COUNT, tripId);
         if (!regions.isEmpty()) {
             tripMapper.insertTripCandidates(regions, tripId);
@@ -443,9 +465,12 @@ public class TripService {
      * 기존 후보 행은 비활성화(use_yn 'Y' → 'N', 이력으로 보관)하고,
      * 그 여행에서 한 번이라도 등장한 지역과 중복되지 않는 새 지역을 활성 후보로 새로 저장한다.
      * 새 후보의 reroll_count 는 직전 후보의 남은 횟수에서 1 감소하므로, 횟수가 0이 되면 더는 리롤할 수 없다.
+     * 요청자가 그 여행 참여자가 아니면 예외를 던진다.
      */
     @Transactional
-    public TripRegionDto rerollRegion(final Long tripId, final Long tripCandidateId) {
+    public TripRegionDto rerollRegion(final Long tripId, final Long tripCandidateId, final Long userId) {
+        requireTripMember(tripId, userId);
+
         // 1. 현재 활성 후보의 남은 리롤 횟수 확인 (없거나 0 이면 리롤 불가)
         Integer remaining = tripMapper.selectRerollCount(tripCandidateId, tripId);
         if (remaining == null || remaining <= 0) {
@@ -461,8 +486,8 @@ public class TripService {
             throw new CommonException(ErrorCode.NO_AVAILABLE_TRIP_REGION);
         }
 
-        // 4. 새 지역을 활성 후보로 저장 (남은 횟수 -1)
-        tripMapper.insertRerolledCandidate(tripId, newRegion.getTripRegionId(), remaining - 1);
+        // 4. 새 지역을 활성 후보로 저장 (남은 횟수 -1). 생성된 trip_candidate_id 가 newRegion 에 채워진다.
+        tripMapper.insertRerolledCandidate(newRegion, tripId, remaining - 1);
 
         return newRegion;
     }

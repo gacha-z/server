@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 @Setter
 @NoArgsConstructor
 public class TripRegionDto {
+    private Long tripCandidateId;
     private Long tripRegionId;
     private String tripRegionCode;
     private String tripRegionName;
