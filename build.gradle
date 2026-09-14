@@ -50,6 +50,7 @@ tasks.register('copyPrivate', Copy) {
     from('Server-Secret') {
         include '*.yml'
         include '*.p8'
+        include '*.json'
     }
     into 'src/main/resources'
 }
