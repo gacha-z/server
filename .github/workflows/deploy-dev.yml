@@ -2,7 +2,7 @@ name: Deploy Dev API
 
 on:
   push:
-    branches: [develop]
+    branches: [release]
   workflow_dispatch:
 
 jobs:
