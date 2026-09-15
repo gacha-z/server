@@ -23,6 +23,25 @@
         ORDER BY rg.sort_order ASC
     </select>
 
+    <select id="selectItemsByTrip" resultType="dk.gatchaz.server.collection.dto.CollectionItemResponse">
+        SELECT
+            ci.collection_item_id AS collectionItemId,
+            rg.region_group_code AS regionGroupCode,
+            rg.region_group_name AS regionGroupName,
+            ci.item_name AS itemName,
+            ci.item_type AS itemType,
+            ci.image_url AS imageUrl,
+            ci.description AS description,
+            'Y' AS acquiredYn,
+            mrci.created_at AS acquiredAt
+        FROM member_rel_collection_item mrci
+        JOIN collection_item ci ON ci.collection_item_id = mrci.collection_item_id
+        JOIN region_group rg ON rg.region_group_id = ci.region_group_id
+        WHERE mrci.member_id = #{memberId}
+          AND mrci.trip_id = #{tripId}
+        ORDER BY mrci.created_at ASC
+    </select>
+
     <select id="selectBadges" resultType="dk.gatchaz.server.collection.dto.BadgeResponse">
         SELECT
             b.badge_id AS badgeId,

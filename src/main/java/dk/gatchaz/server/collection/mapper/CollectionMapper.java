@@ -22,6 +22,12 @@ public interface CollectionMapper {
     List<CollectionItemResponse> selectItems(@Param("memberId") Long memberId);
 
     /**
+     * 특정 여행(tripId)에서 회원(memberId)이 획득한 아이템만 조회한다. (여행 완료 시 지급된 지역 아이템,
+     * region_group 당 아이템이 1개라 보통 0개 또는 1개다)
+     */
+    List<CollectionItemResponse> selectItemsByTrip(@Param("memberId") Long memberId, @Param("tripId") Long tripId);
+
+    /**
      * 전체 배지 목록을 회원 기준 진행률/달성 여부와 함께 조회한다.
      */
     List<BadgeResponse> selectBadges(@Param("memberId") Long memberId);

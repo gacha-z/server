@@ -471,6 +471,29 @@
             )
     </insert>
 
+    <!-- 몇 일차에 어떤 미션을 했고 성공/실패했는지 이력 조회. NOT_PERFORMED 도 "그 라운드는 진행되지
+         않았다"는 이력으로 포함해 그대로 보여준다. -->
+    <select id="selectTripMissionHistory" resultType="dk.gatchaz.server.mission.dto.MissionHistoryItemResponse">
+        SELECT
+            tm.day_no,
+            tm.assigned_order,
+            tm.trip_mission_id,
+            m.mission_id,
+            m.mission_type,
+            m.title,
+            m.description,
+            m.difficulty,
+            tm.status,
+            tm.started_at,
+            tm.completed_at,
+            tm.failed_at
+        FROM trip_mission tm
+        INNER JOIN mission m
+            ON m.mission_id = tm.mission_id
+        WHERE tm.trip_id = #{tripId}
+        ORDER BY tm.day_no ASC, tm.assigned_order ASC
+    </select>
+
     <insert id="insertMissionRerollLog">
         INSERT INTO
             mission_reroll_log(

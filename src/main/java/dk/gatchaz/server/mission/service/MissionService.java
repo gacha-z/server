@@ -7,6 +7,8 @@ import dk.gatchaz.server.mission.dto.MissionCandidateRerollInfo;
 import dk.gatchaz.server.mission.dto.MissionCandidateResponse;
 import dk.gatchaz.server.mission.dto.MissionCandidateSelectionInfo;
 import dk.gatchaz.server.mission.dto.MissionCompleteRequest;
+import dk.gatchaz.server.mission.dto.MissionHistoryDayResponse;
+import dk.gatchaz.server.mission.dto.MissionHistoryItemResponse;
 import dk.gatchaz.server.mission.dto.MissionInfo;
 import dk.gatchaz.server.mission.dto.MissionRerollInsertParam;
 import dk.gatchaz.server.mission.dto.MissionSelectParam;
@@ -29,8 +31,11 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -231,6 +236,28 @@ public class MissionService {
 
         // 포기도 "미션 수행"으로 간주한다. 방금 포기한 미션으로 여행의 모든 날짜가 다 끝났다면 여행을 완료 처리한다.
         completeTripIfLastMission(tripId);
+    }
+
+    /**
+     * 여행(tripId)에서 지금까지 진행된 모든 미션 라운드를 일자(dayNo) 단위로 묶어 반환한다.
+     * (몇 일차에 어떤 미션을 했고 성공/실패했는지 이력 조회. 아직 하루도 진행되지 않았으면 빈 목록을 반환한다)
+     */
+    @Transactional(readOnly = true)
+    public List<MissionHistoryDayResponse> getMissionHistory(final Long tripId, final Long userId) {
+        requireTripMember(tripId, userId);
+
+        final List<MissionHistoryItemResponse> rows = missionMapper.selectTripMissionHistory(tripId);
+
+        final Map<Integer, List<MissionHistoryItemResponse>> byDay = new LinkedHashMap<>();
+        for (final MissionHistoryItemResponse row : rows) {
+            byDay.computeIfAbsent(row.getDayNo(), key -> new ArrayList<>()).add(row);
+        }
+
+        final List<MissionHistoryDayResponse> result = new ArrayList<>(byDay.size());
+        for (final Map.Entry<Integer, List<MissionHistoryItemResponse>> entry : byDay.entrySet()) {
+            result.add(new MissionHistoryDayResponse(entry.getKey(), entry.getValue()));
+        }
+        return result;
     }
 
     /**

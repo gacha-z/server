@@ -8,6 +8,9 @@ import dk.gatchaz.server.collection.dto.MemberDiaryCount;
 import dk.gatchaz.server.collection.dto.RegionVisitCount;
 import dk.gatchaz.server.collection.dto.TripRegionGroupInfo;
 import dk.gatchaz.server.collection.mapper.CollectionMapper;
+import dk.gatchaz.server.common.exception.CommonException;
+import dk.gatchaz.server.common.exception.ErrorCode;
+import dk.gatchaz.server.trip.mapper.TripMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,10 +31,23 @@ import java.util.List;
 public class CollectionService {
 
     private final CollectionMapper collectionMapper;
+    private final TripMapper tripMapper;
 
     @Transactional(readOnly = true)
     public List<CollectionItemResponse> getItems(final Long userId) {
         return collectionMapper.selectItems(userId);
+    }
+
+    /**
+     * 특정 여행(tripId)에서 회원(userId)이 획득한 아이템만 조회한다. (0개 또는 1개)
+     * 요청자가 그 여행 참여자가 아니면 예외를 던진다.
+     */
+    @Transactional(readOnly = true)
+    public List<CollectionItemResponse> getItemsByTrip(final Long tripId, final Long userId) {
+        if (tripMapper.existsTripMember(tripId, userId) == 0) {
+            throw new CommonException(ErrorCode.NOT_FOUND_TRIP_MEMBER);
+        }
+        return collectionMapper.selectItemsByTrip(userId, tripId);
     }
 
     @Transactional(readOnly = true)

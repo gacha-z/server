@@ -5,6 +5,7 @@ import dk.gatchaz.server.common.dto.ResponseDto;
 import dk.gatchaz.server.mission.dto.MissionCandidateListResponse;
 import dk.gatchaz.server.mission.dto.MissionCandidateResponse;
 import dk.gatchaz.server.mission.dto.MissionCompleteRequest;
+import dk.gatchaz.server.mission.dto.MissionHistoryDayResponse;
 import dk.gatchaz.server.mission.dto.MissionSelectResponse;
 import dk.gatchaz.server.mission.service.MissionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -18,6 +19,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @Tag(name = "Mission", description = "미션 API")
 @RestController
@@ -153,5 +156,26 @@ public class MissionController {
             @Parameter(description = "리롤할 미션 후보 ID", example = "1") @PathVariable final Long missionCandidateId,
             @UserId final Long userId) {
         return ResponseDto.ok(missionService.rerollMission(tripId, missionCandidateId, userId));
+    }
+
+    /**
+     * 미션 이력 조회
+     */
+    @Operation(
+            summary = "미션 이력 조회",
+            description = """
+                    이 여행에서 지금까지 진행된 모든 미션 라운드를 일자(dayNo)별로 묶어 반환한다.
+                    각 라운드에는 미션 정보와 진행 상태(status), 시작/완료/실패 일시가 담긴다.
+
+                    - status: IN_PROGRESS(진행 중) / COMPLETED(완료) / FAILED(실패·포기) /
+                      NOT_PERFORMED(후보로 뽑히지도 못한 채 날짜가 지나 자동으로 남겨진 이력)
+                    - 아직 하루도 진행되지 않은 여행이면 빈 배열을 반환한다.
+                    - 요청자가 그 여행 참여자가 아니면 **404** (NOT_FOUND_TRIP_MEMBER)
+                    """)
+    @GetMapping("/history")
+    public ResponseDto<List<MissionHistoryDayResponse>> getMissionHistory(
+            @UserId final Long userId,
+            @Parameter(description = "여행 ID", example = "1") @PathVariable final Long tripId) {
+        return ResponseDto.ok(missionService.getMissionHistory(tripId, userId));
     }
 }

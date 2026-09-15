@@ -3,6 +3,7 @@ package dk.gatchaz.server.mission.mapper;
 import dk.gatchaz.server.mission.dto.MissionCandidateRerollInfo;
 import dk.gatchaz.server.mission.dto.MissionCandidateResponse;
 import dk.gatchaz.server.mission.dto.MissionCandidateSelectionInfo;
+import dk.gatchaz.server.mission.dto.MissionHistoryItemResponse;
 import dk.gatchaz.server.mission.dto.MissionInfo;
 import dk.gatchaz.server.mission.dto.MissionRerollInsertParam;
 import dk.gatchaz.server.mission.dto.MissionSelectParam;
@@ -242,4 +243,10 @@ public interface MissionMapper {
                                 @Param("memberId") Long memberId,
                                 @Param("oldMissionId") Long oldMissionId,
                                 @Param("newMissionId") Long newMissionId);
+
+    /**
+     * 여행(tripId)에서 지금까지 진행된 모든 미션 라운드(trip_mission)를 일자·라운드 순으로 조회한다.
+     * (몇 일차에 어떤 미션을 수행했고 성공/실패했는지 이력 조회용)
+     */
+    List<MissionHistoryItemResponse> selectTripMissionHistory(@Param("tripId") Long tripId);
 }
