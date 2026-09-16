@@ -110,6 +110,13 @@ public interface MissionMapper {
     int existsInProgressTripMission(@Param("tripId") Long tripId, @Param("tripMissionId") Long tripMissionId);
 
     /**
+     * 여행(tripId)에 진행 중(status = 'IN_PROGRESS')인 미션이 하나라도 있는지 확인한다. (트립미션 ID 무관)
+     * 진행 중인 미션이 있으면 완료/포기 처리 전까지는 다음 라운드의 후보 조회/선택/리롤을 막는 데 쓴다.
+     * (존재하면 1 이상)
+     */
+    int existsAnyInProgressTripMission(@Param("tripId") Long tripId);
+
+    /**
      * 여행(tripId)에 현재 참여(JOINED) 중인 팀원 수를 조회한다.
      */
     int countJoinedMembers(@Param("tripId") Long tripId);

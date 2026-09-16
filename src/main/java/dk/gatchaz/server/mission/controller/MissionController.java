@@ -51,6 +51,8 @@ public class MissionController {
 
                     ### 실패 응답
                     - 여행이 없으면 **404** (NOT_FOUND_TRIP)
+                    - 이미 진행 중인(IN_PROGRESS) 미션이 있으면 **409** (MISSION_ALREADY_IN_PROGRESS) -
+                      완료/포기 처리 전까지는 다음 라운드 후보를 조회할 수 없다.
                     - 아직 여행 지역이 선택되지 않았으면 **400** (TRIP_REGION_NOT_SELECTED)
                     - 아직 미션 시작 시각(mission_start_at) 전이면 **400** (MISSION_NOT_STARTED)
                     - 오늘 목표 라운드를 모두 완료/실패 처리했으면 **409** (DAILY_MISSION_QUOTA_COMPLETED)
@@ -78,6 +80,7 @@ public class MissionController {
 
                     ### 실패 응답
                     - 요청자가 그 여행 참여자가 아니면 **404** (NOT_FOUND_TRIP_MEMBER)
+                    - 이미 진행 중인(IN_PROGRESS) 미션이 있으면 **409** (MISSION_ALREADY_IN_PROGRESS)
                     - 요청자가 이 라운드의 담당자가 아니면 **403** (NOT_MISSION_PICKER)
                     """)
     @PostMapping("/{missionCandidateId}/select")
@@ -146,6 +149,7 @@ public class MissionController {
 
                     ### 실패 응답
                     - 요청자가 그 여행 참여자가 아니면 **404** (NOT_FOUND_TRIP_MEMBER)
+                    - 이미 진행 중인(IN_PROGRESS) 미션이 있으면 **409** (MISSION_ALREADY_IN_PROGRESS)
                     - 요청자가 이 라운드의 담당자가 아니면 **403** (NOT_MISSION_PICKER)
                     - 이미 선택/리롤되었거나 리롤 횟수를 소진한 후보면 **409** (REROLL_NOT_AVAILABLE)
                     - 교체할 수 있는 미션이 없으면 **400** (NO_AVAILABLE_MISSION)

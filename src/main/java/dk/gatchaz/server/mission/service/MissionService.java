@@ -76,6 +76,7 @@ public class MissionService {
             throw new CommonException(ErrorCode.NOT_FOUND_TRIP);
         }
         requireTripMember(tripId, userId);
+        requireNoInProgressMission(tripId);
         if (trip.getTripRegionId() == null) {
             throw new CommonException(ErrorCode.TRIP_REGION_NOT_SELECTED);
         }
@@ -131,6 +132,7 @@ public class MissionService {
     @Transactional
     public MissionSelectResponse selectMission(final Long tripId, final Long missionCandidateId, final Long userId) {
         requireTripMember(tripId, userId);
+        requireNoInProgressMission(tripId);
 
         // 1. 후보 확인
         final MissionCandidateSelectionInfo candidate =
@@ -270,6 +272,16 @@ public class MissionService {
     }
 
     /**
+     * 여행(tripId)에 진행 중(IN_PROGRESS)인 미션이 있으면 예외를 던진다. 완료/포기 처리 전까지는
+     * 다음 라운드의 후보 조회/선택/리롤을 막기 위함이다. (하나의 여행은 한 번에 미션 하나만 진행한다)
+     */
+    private void requireNoInProgressMission(final Long tripId) {
+        if (missionMapper.existsAnyInProgressTripMission(tripId) > 0) {
+            throw new CommonException(ErrorCode.MISSION_ALREADY_IN_PROGRESS);
+        }
+    }
+
+    /**
      * 요청자(userId)가 그 라운드의 담당자(pickerMemberId)인지 확인한다. 아니면 예외를 던진다.
      * pickerMemberId 가 null 이면(이 기능 도입 전에 생성된 라운드) 검증을 건너뛴다.
      */
@@ -402,6 +414,7 @@ public class MissionService {
     @Transactional
     public MissionCandidateResponse rerollMission(final Long tripId, final Long missionCandidateId, final Long userId) {
         requireTripMember(tripId, userId);
+        requireNoInProgressMission(tripId);
 
         // 1. 리롤 가능한 후보인지 확인
         final MissionCandidateRerollInfo candidate = missionMapper.selectCandidateForReroll(tripId, missionCandidateId);

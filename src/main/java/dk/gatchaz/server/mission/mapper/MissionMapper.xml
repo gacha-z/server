@@ -199,6 +199,14 @@
           AND status = 'IN_PROGRESS'
     </select>
 
+    <select id="existsAnyInProgressTripMission" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM trip_mission
+        WHERE trip_id = #{tripId}
+          AND status = 'IN_PROGRESS'
+    </select>
+
     <select id="countJoinedMembers" resultType="int">
         SELECT
             COUNT(*)
