@@ -54,12 +54,15 @@ jobs:
       # GitHub Actions 러너에서 docker/login-action 으로 로그인한 상태는 그 러너에만 남아있고
       # EC2로 전달되지 않는다. hansangmin/gatchaz-server 가 private 레포라 EC2에서도 별도로
       # 로그인해야 pull이 된다 (안 그러면 "authentication required" 로 실패).
+      #
+      # 임시 EC2(gatch-free) 사용 중 - 기존 EC2(폰 분실로 접속 불가)를 되찾으면 host/key 를
+      # DEV_EC2_HOST/DEV_EC2_SSH_KEY 로 되돌리면 된다. (DEV_EC2_USER/DEV_EC2_PORT 는 동일해서 안 바꿈)
       - name: Pull new image and restart via docker compose
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.DEV_EC2_HOST }}
+          host: ${{ secrets.DEV_EC2_HOST_TEMP }}
           username: ${{ secrets.DEV_EC2_USER }}
-          key: ${{ secrets.DEV_EC2_SSH_KEY }}
+          key: ${{ secrets.DEV_EC2_SSH_KEY_TEMP }}
           port: ${{ secrets.DEV_EC2_PORT }}
           envs: DOCKERHUB_USERNAME,DOCKERHUB_TOKEN
           script: |
