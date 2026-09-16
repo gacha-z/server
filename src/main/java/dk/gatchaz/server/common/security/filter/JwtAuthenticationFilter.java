@@ -94,10 +94,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         // 로그인/리프레시 요청은 애초에 토큰을 검증할 필요가 없으니, 옛 클라이언트가 헤더에
         // 유효하지 않은 값을 실수로 붙여 보내더라도 실패하지 않도록 아예 건너뛴다.
+        // (swagger-ui/v3/api-docs 는 SecurityConfig 의 별도 필터체인(securityMatcher)이 가로채서
+        // 이 필터 자체가 실행되지 않으므로 여기서 따로 예외 처리할 필요가 없다)
         final String uri = request.getRequestURI();
         return Constant.NO_NEED_AUTH_URLS.contains(uri)
-                || uri.startsWith("/swagger-ui")
-                || uri.startsWith("/v3/api-docs")
                 || uri.startsWith("/webjars");
     }
 }

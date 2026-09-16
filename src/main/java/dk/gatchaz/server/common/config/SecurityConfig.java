@@ -4,16 +4,21 @@ import dk.gatchaz.server.common.security.JwtAuthEntryPoint;
 import dk.gatchaz.server.common.security.JwtAuthenticationProvider;
 import dk.gatchaz.server.common.security.filter.JwtAuthenticationFilter;
 import dk.gatchaz.server.common.security.handler.JwtAccessDeniedHandler;
+import dk.gatchaz.server.common.security.swagger.SwaggerUserDetailsService;
 import dk.gatchaz.server.common.util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
 
@@ -53,8 +58,39 @@ public class SecurityConfig {
     private final JwtAuthenticationProvider jwtAuthenticationProvider;
     private final JwtAuthEntryPoint jwtAuthEntryPoint;
     private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
+    private final SwaggerUserDetailsService swaggerUserDetailsService;
 
     @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    /**
+     * Swagger UI/API 문서(swagger-ui, v3/api-docs)만 별도로 막는 필터체인.
+     * 앱 회원(JWT) 시스템과 무관하게 swagger_account 테이블 계정으로 HTTP Basic 인증한다.
+     * securityMatcher 로 매칭된 요청은 이 체인만 타고 아래 메인 체인(JwtAuthenticationFilter 포함)은
+     * 아예 실행되지 않으므로 @Order 로 이 체인이 먼저 평가되게 한다.
+     */
+    @Bean
+    @Order(1)
+    public SecurityFilterChain swaggerSecurityFilterChain(final HttpSecurity httpSecurity) throws Exception {
+        final DaoAuthenticationProvider authenticationProvider = new DaoAuthenticationProvider();
+        authenticationProvider.setUserDetailsService(swaggerUserDetailsService);
+        authenticationProvider.setPasswordEncoder(passwordEncoder());
+
+        return httpSecurity
+                .securityMatcher("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs", "/v3/api-docs/**")
+                .authenticationProvider(authenticationProvider)
+                .authorizeHttpRequests(registry -> registry.anyRequest().authenticated())
+                .httpBasic(Customizer.withDefaults())
+                .csrf(AbstractHttpConfigurer::disable)
+                .sessionManagement(sessionManagement ->
+                        sessionManagement.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .build();
+    }
+
+    @Bean
+    @Order(2)
     public SecurityFilterChain securityFilterChain(final HttpSecurity httpSecurity) throws Exception {
         return httpSecurity
                 .cors(Customizer.withDefaults())
@@ -92,7 +128,8 @@ public class SecurityConfig {
                         // collection
                         .requestMatchers("/api/v1/collection/**").hasRole("USER")
 
-                        // 그 외(swagger, api-docs 등) 공개
+                        // 그 외 공개 (swagger/api-docs 는 securityMatcher 로 위 swaggerSecurityFilterChain 이
+                        // 먼저 가로채므로 여기까지 오지 않는다)
                         .anyRequest().permitAll())
                 .exceptionHandling(configurer -> configurer
                         .authenticationEntryPoint(jwtAuthEntryPoint)
