@@ -78,14 +78,16 @@ public class SecurityConfig {
         authenticationProvider.setUserDetailsService(swaggerUserDetailsService);
         authenticationProvider.setPasswordEncoder(passwordEncoder());
 
+        // 세션을 STATELESS 로 두면 스웨거 페이지 하나 로드할 때 딸려오는 JS/CSS 등 요청마다 매번
+        // Basic 헤더로 처음부터 다시 인증하게 되어(=매 요청마다 DB 조회) 비효율적이다. 브라우저용
+        // Basic Auth 는 JWT 와 달리 세션을 써도 되고 쓰는 게 맞다 - 한 번 인증되면 세션에 저장된
+        // SecurityContext 를 재사용해 이후 요청은 DB를 다시 보지 않는다. (기본값 IF_REQUIRED)
         return httpSecurity
                 .securityMatcher("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs", "/v3/api-docs/**")
                 .authenticationProvider(authenticationProvider)
                 .authorizeHttpRequests(registry -> registry.anyRequest().authenticated())
                 .httpBasic(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(sessionManagement ->
-                        sessionManagement.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .build();
     }
 
