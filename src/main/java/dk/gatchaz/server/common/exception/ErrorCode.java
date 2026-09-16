@@ -22,6 +22,7 @@ public enum ErrorCode {
     UNKNOWN_NATIONAL_CODE_ERROR(40007, HttpStatus.BAD_REQUEST, "Unknown national code"),
     UNKNOWN_BLOOD_TYPE_ERROR(40008, HttpStatus.BAD_REQUEST, "Unknown blood type"),
     UNKNOWN_GENDER_ERROR(40023, HttpStatus.BAD_REQUEST, "Unknown gender"),
+    DEVICE_PERMISSION_REQUIRED(40024, HttpStatus.BAD_REQUEST, "위치/카메라/알림 권한이 모두 허용되어야 여행을 생성할 수 있습니다."),
 
     EXPIRED_TOKEN_ERROR(40100, HttpStatus.UNAUTHORIZED, "만료된 토큰입니다."),
     INVALID_TOKEN_ERROR(40101, HttpStatus.UNAUTHORIZED, "유효하지 않은 토큰입니다."),

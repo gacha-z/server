@@ -60,6 +60,13 @@ public interface NotificationMapper {
     int updateDevicePermission(DevicePermissionSaveParam param);
 
     /**
+     * 회원(memberId)이 가장 최근에 활동한 디바이스(last_active_at 기준)의 위치/카메라/알림 권한이
+     * 전부 GRANTED 인지 확인한다. (여행 생성 시 3개 권한 모두 허용을 요구하는 정책 검증용)
+     * 등록된 디바이스가 없거나 권한 상태가 아직 없으면 null 을 반환한다(허용되지 않은 것으로 간주).
+     */
+    Boolean selectLatestDeviceAllPermissionsGranted(@Param("memberId") Long memberId);
+
+    /**
      * 알림함 목록을 최신순(notification_id 내림차순)으로 조회한다.
      * hasNext 판별을 위해 서비스에서 요청 개수 + 1 을 size 로 넘긴다.
      */

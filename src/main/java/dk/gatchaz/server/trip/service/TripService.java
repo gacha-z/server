@@ -3,6 +3,7 @@ package dk.gatchaz.server.trip.service;
 import dk.gatchaz.server.common.exception.CommonException;
 import dk.gatchaz.server.common.exception.ErrorCode;
 import dk.gatchaz.server.notification.event.TripCancelledEvent;
+import dk.gatchaz.server.notification.mapper.NotificationMapper;
 import dk.gatchaz.server.trip.dto.TripCreateParam;
 import dk.gatchaz.server.trip.dto.TripCreateRequest;
 import dk.gatchaz.server.trip.dto.TripCreateResponse;
@@ -39,6 +40,7 @@ public class TripService {
     private static final int RANDOM_REGION_COUNT = 3;
 
     private final TripMapper tripMapper;
+    private final NotificationMapper notificationMapper;
     private final InviteCodeGenerator inviteCodeGenerator;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -46,15 +48,21 @@ public class TripService {
      * 화면 입력값으로 여행을 생성한다. 지역은 이 단계에서 선택하지 않으므로 trip_region_id 는 비워둔다.
      * 이후 추천/리롤로 후보를 받고, 지역 선택 단계(selectTripRegion)에서 trip_region_id 를 확정한다.
      * 하나의 트랜잭션으로 처리되어, 아래 중 하나라도 실패하면 전체 롤백된다.
-     * 1. 생성자가 그 기간에 이미 참여 중인(취소되지 않은) 다른 여행이 없는지 확인한다. (하루에 여행은 하나만)
-     * 2. 화면 입력값과 생성자(owner), 상태, 초대 코드를 trip 에 INSERT 한다.
-     * 3. 생성자(owner)를 member_rel_trip 에 OWNER 로 등록한다.
+     * 1. 생성자의 가장 최근 디바이스에 위치/카메라/알림 권한이 전부 허용(GRANTED)되어 있는지 확인한다.
+     * 2. 생성자가 그 기간에 이미 참여 중인(취소되지 않은) 다른 여행이 없는지 확인한다. (하루에 여행은 하나만)
+     * 3. 화면 입력값과 생성자(owner), 상태, 초대 코드를 trip 에 INSERT 한다.
+     * 4. 생성자(owner)를 member_rel_trip 에 OWNER 로 등록한다.
      */
     @Transactional
     public TripCreateResponse createTrip(final TripCreateRequest request, final Long userId) {
         // userId 는 컨트롤러에서 @UserId 로 주입된 인증된 사용자 ID 이다. 이 여행의 생성자(owner)가 된다.
 
-        // 0. 그 기간에 이미 참여 중인 다른 여행이 있는지 확인 (하루에 여행은 하나만 가능)
+        // 1. 위치/카메라/알림 권한이 3개 다 허용되어 있는지 확인 (디바이스 미등록/권한 미설정도 미허용으로 간주)
+        if (!Boolean.TRUE.equals(notificationMapper.selectLatestDeviceAllPermissionsGranted(userId))) {
+            throw new CommonException(ErrorCode.DEVICE_PERMISSION_REQUIRED);
+        }
+
+        // 2. 그 기간에 이미 참여 중인 다른 여행이 있는지 확인 (하루에 여행은 하나만 가능)
         if (tripMapper.existsOverlappingTrip(userId, request.getStartDate(), request.getEndDate()) > 0) {
             throw new CommonException(ErrorCode.TRIP_DATE_OVERLAP);
         }
@@ -62,7 +70,7 @@ public class TripService {
         // 첫 미션 시각(시·분)을 여행 시작일과 합쳐 저장용 일시로 가공
         final LocalDateTime missionStartAt = LocalDateTime.of(request.getStartDate(), request.getMissionStartTime());
 
-        // 1. 화면 입력값으로 trip 생성 (지역 미선택 상태, trip_region_id IS NULL / 초대 코드 영구 발급)
+        // 3. 화면 입력값으로 trip 생성 (지역 미선택 상태, trip_region_id IS NULL / 초대 코드 영구 발급)
         final TripCreateParam param = TripCreateParam.builder()
                 .ownerMemberId(userId)
                 .title(request.getTitle())
@@ -79,7 +87,7 @@ public class TripService {
         tripMapper.insertTrip(param);
         final Long tripId = param.getTripId();
 
-        // 2. 생성자(owner)를 참여자로 등록
+        // 4. 생성자(owner)를 참여자로 등록
         tripMapper.insertTripMember(tripId, userId, ETripMemberRole.OWNER.name());
 
         return new TripCreateResponse(tripId);

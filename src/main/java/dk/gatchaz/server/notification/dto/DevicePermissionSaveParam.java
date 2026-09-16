@@ -1,5 +1,6 @@
 package dk.gatchaz.server.notification.dto;
 
+import dk.gatchaz.server.type.EPermissionStatus;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -15,7 +16,7 @@ public class DevicePermissionSaveParam {
 
     private Long devicePermissionId;
     private Long deviceId;
-    private String locationStatus;
-    private String cameraStatus;
-    private String notificationStatus;
+    private EPermissionStatus locationStatus;
+    private EPermissionStatus cameraStatus;
+    private EPermissionStatus notificationStatus;
 }

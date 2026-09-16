@@ -48,6 +48,7 @@ public class TripController {
      * 여행 생성
      */
     @Operation(summary = "여행 생성", description = "화면 입력값으로 여행을 생성하고 생성자를 OWNER 로 등록한다. 지역은 이 단계에서 선택하지 않으며(trip_region_id 는 NULL), 반환된 tripId 로 추천/리롤 후 지역 선택 API 를 호출한다. "
+            + "요청자의 가장 최근 디바이스에 위치/카메라/알림 권한이 하나라도 GRANTED 가 아니면(디바이스 미등록 포함) 400(DEVICE_PERMISSION_REQUIRED)을 반환한다. "
             + "요청자가 그 기간에 이미 참여 중인(취소되지 않은) 다른 여행이 있으면 409(TRIP_DATE_OVERLAP)를 반환한다 - 하루에 하나의 여행만 참여할 수 있다.")
     @PostMapping
     public ResponseDto<TripCreateResponse> createTrip(

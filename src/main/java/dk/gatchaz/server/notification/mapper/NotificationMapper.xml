@@ -98,6 +98,21 @@
             )
     </insert>
 
+    <!-- 회원의 가장 최근 활동 디바이스(last_active_at DESC) 1건의 권한 상태가 전부 GRANTED 인지 확인.
+         디바이스나 권한 상태 행이 아직 없으면 결과 자체가 없어 Boolean 이 null 로 매핑된다. -->
+    <select id="selectLatestDeviceAllPermissionsGranted" resultType="java.lang.Boolean">
+        SELECT
+            dp.location_status = 'GRANTED'
+            AND dp.camera_status = 'GRANTED'
+            AND dp.notification_status = 'GRANTED'
+        FROM device d
+        INNER JOIN device_permission dp
+            ON dp.device_id = d.device_id
+        WHERE d.member_id = #{memberId}
+        ORDER BY d.last_active_at DESC, d.updated_at DESC
+        LIMIT 1
+    </select>
+
     <update id="updateDevicePermission">
         UPDATE
             device_permission

@@ -63,7 +63,7 @@ public class DeviceController {
     @Operation(
             summary = "디바이스 권한 상태 갱신",
             description = "디바이스(deviceId)의 위치/카메라/알림 권한 상태를 갱신한다(부분 업데이트 - 값을 보낸 필드만 반영, 나머지는 기존 값 유지). "
-                    + "권한 상태를 처음 보내는 디바이스면 자동으로 새로 등록된다. 값은 클라이언트(OS)가 보내는 문자열을 그대로 저장한다(서버 검증 없음). "
+                    + "권한 상태를 처음 보내는 디바이스면 자동으로 새로 등록된다. 값은 GRANTED/DENIED 중 하나여야 하며, 그 외 값은 400을 반환한다. "
                     + "대상 디바이스가 없으면 404, 본인 소유의 디바이스가 아니면 403 을 반환한다.")
     @PatchMapping("/{deviceId}/permissions")
     public ResponseDto<DevicePermissionResponse> updateDevicePermission(

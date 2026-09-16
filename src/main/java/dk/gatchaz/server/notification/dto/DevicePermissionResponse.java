@@ -1,5 +1,6 @@
 package dk.gatchaz.server.notification.dto;
 
+import dk.gatchaz.server.type.EPermissionStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -25,13 +26,13 @@ public class DevicePermissionResponse {
     private Long deviceId;
 
     @Schema(description = "위치 권한 상태", example = "GRANTED")
-    private String locationStatus;
+    private EPermissionStatus locationStatus;
 
     @Schema(description = "카메라 권한 상태", example = "GRANTED")
-    private String cameraStatus;
+    private EPermissionStatus cameraStatus;
 
     @Schema(description = "알림 권한 상태", example = "DENIED")
-    private String notificationStatus;
+    private EPermissionStatus notificationStatus;
 
     @Schema(description = "마지막 갱신 시각")
     private LocalDateTime updatedAt;
