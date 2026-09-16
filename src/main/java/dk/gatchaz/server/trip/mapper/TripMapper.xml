@@ -52,9 +52,26 @@
         SELECT
             trip_id,
             status,
-            member_limit
+            member_limit,
+            start_date,
+            end_date
         FROM trip
         WHERE invite_code = #{code}
+    </select>
+
+    <!-- 회원(memberId)이 현재 참여(JOINED) 중인 여행 중, 취소되지 않은 여행의 기간이
+         [startDate, endDate] 와 하루라도 겹치는 여행이 있는지 확인한다. (하루에 여행은 하나만 가능) -->
+    <select id="existsOverlappingTrip" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM member_rel_trip mrt
+        INNER JOIN trip t
+            ON t.trip_id = mrt.trip_id
+        WHERE mrt.member_id = #{memberId}
+          AND mrt.status = 'JOINED'
+          AND t.status != 'CANCELLED'
+          AND t.start_date &lt;= #{endDate}
+          AND t.end_date &gt;= #{startDate}
     </select>
 
     <select id="countJoinedMembers" resultType="int">
@@ -106,6 +123,9 @@
         LEFT JOIN trip_region tr
             ON tr.trip_region_id = t.trip_region_id
         <where>
+            <!-- 아직 지역을 선택하지 않은(trip_region_id IS NULL) 여행은 생성 중간 단계라 목록에 노출하지 않는다.
+                 (여행 상세/지역 추천·리롤·선택 API 는 tripId 로 바로 접근하므로 이 필터의 영향을 받지 않는다) -->
+            AND t.trip_region_id IS NOT NULL
             <if test="cursor != null">
                 AND t.trip_id &lt; #{cursor}
             </if>

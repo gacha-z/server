@@ -47,7 +47,8 @@ public class TripController {
     /**
      * 여행 생성
      */
-    @Operation(summary = "여행 생성", description = "화면 입력값으로 여행을 생성하고 생성자를 OWNER 로 등록한다. 지역은 이 단계에서 선택하지 않으며(trip_region_id 는 NULL), 반환된 tripId 로 추천/리롤 후 지역 선택 API 를 호출한다.")
+    @Operation(summary = "여행 생성", description = "화면 입력값으로 여행을 생성하고 생성자를 OWNER 로 등록한다. 지역은 이 단계에서 선택하지 않으며(trip_region_id 는 NULL), 반환된 tripId 로 추천/리롤 후 지역 선택 API 를 호출한다. "
+            + "요청자가 그 기간에 이미 참여 중인(취소되지 않은) 다른 여행이 있으면 409(TRIP_DATE_OVERLAP)를 반환한다 - 하루에 하나의 여행만 참여할 수 있다.")
     @PostMapping
     public ResponseDto<TripCreateResponse> createTrip(
             @UserId final Long userId,
@@ -63,9 +64,12 @@ public class TripController {
             description = """
                     로그인한 회원이 참여(JOINED)한 여행을 검색 조건으로 필터링하여 조회한다. (최신순, 커서 기반 무한 스크롤)
 
+                    아직 지역을 선택하지 않은(trip_region_id 미확정) 여행은 생성 중간 단계로 보고 이 목록에
+                    노출하지 않는다. (여행 상세 조회·지역 추천/리롤/선택 API 는 tripId 로 직접 접근하므로 영향 없음)
+
                     ### 필터 (모두 선택값, 없으면 조건 무시)
                     - **title**: 여행 이름 부분 일치 (예: `제주` → "제주 여행", "여름 제주" 모두 검색)
-                    - **tripRegionId**: 지역 ID 정확 일치. 지역 미선택 여행은 이 조건을 주면 제외된다.
+                    - **tripRegionId**: 지역 ID 정확 일치.
                     - **status**: 여행 상태 (CREATED / CANCELLED / COMPLETED)
                     - **dateFrom, dateTo**: 검색 기간. 여행 기간(startDate~endDate)이 이 구간과 **겹치면** 조회된다.
                       (한쪽만 줘도 됨. 조건식: `endDate >= dateFrom AND startDate <= dateTo`)
@@ -251,7 +255,8 @@ public class TripController {
     /**
      * 초대 링크로 여행 참여
      */
-    @Operation(summary = "여행 참여", description = "초대 링크의 코드로 회원을 여행에 참여시킨다. 유효하지 않은 코드, 참여 불가 상태, 이미 참여 중, 정원 초과 시 실패한다. 이전에 나갔거나(LEFT) 강퇴된(KICKED) 회원도 다시 참여할 수 있다. (재참여 시 새 참여 이력 생성)")
+    @Operation(summary = "여행 참여", description = "초대 링크의 코드로 회원을 여행에 참여시킨다. 유효하지 않은 코드, 참여 불가 상태, 이미 참여 중, 정원 초과 시 실패한다. 이전에 나갔거나(LEFT) 강퇴된(KICKED) 회원도 다시 참여할 수 있다. (재참여 시 새 참여 이력 생성) "
+            + "참여자가 그 여행 기간에 이미 참여 중인(취소되지 않은) 다른 여행이 있으면 409(TRIP_DATE_OVERLAP)를 반환한다 - 하루에 하나의 여행만 참여할 수 있다.")
     @PostMapping("/join")
     public ResponseDto<TripJoinResponse> joinTrip(
             @UserId final Long userId,

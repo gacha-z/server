@@ -129,7 +129,7 @@ public class TripRegionImageService {
     /**
      * 지역의 대표 이미지로 쓸 관광지 1건을 찾는다. 찾지 못하면 null.
      *
-     * 1. trip_region_code(법정동 10자리)를 잘라 조회한다. (대부분 이 경로에서 끝난다)
+     * 1. trip_region_code(TourAPI 시군구코드 5자리)를 잘라 조회한다. (대부분 이 경로에서 끝난다)
      * 2. 결과가 없으면 TourAPI 법정동 코드 목록에서 지역명으로 코드를 다시 찾아 조회한다.
      *    trip_region 의 코드와 TourAPI 의 코드가 어긋나는 지역들을 이 단계에서 구제한다.
      */

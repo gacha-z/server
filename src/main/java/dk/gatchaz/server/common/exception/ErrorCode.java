@@ -81,6 +81,7 @@ public enum ErrorCode {
     TRIP_NOT_CANCELLABLE(40014, HttpStatus.BAD_REQUEST, "취소할 수 없는 상태의 여행입니다."),
     ALREADY_TRIP_OWNER(40015, HttpStatus.BAD_REQUEST, "해당 팀원이 이미 여행 생성자(방장)입니다."),
     TRIP_MEMBER_LIMIT_BELOW_JOINED(40016, HttpStatus.BAD_REQUEST, "여행 정원은 현재 참여 인원보다 작을 수 없습니다."),
+    TRIP_DATE_OVERLAP(40907, HttpStatus.CONFLICT, "해당 기간에 이미 참여 중인 다른 여행이 있습니다. 하루에 하나의 여행만 참여할 수 있습니다."),
 
     // 미션 관련 에러 코드
     TRIP_REGION_NOT_SELECTED(40017, HttpStatus.BAD_REQUEST, "아직 여행 지역이 선택되지 않았습니다."),

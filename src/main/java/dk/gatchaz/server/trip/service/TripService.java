@@ -46,12 +46,18 @@ public class TripService {
      * 화면 입력값으로 여행을 생성한다. 지역은 이 단계에서 선택하지 않으므로 trip_region_id 는 비워둔다.
      * 이후 추천/리롤로 후보를 받고, 지역 선택 단계(selectTripRegion)에서 trip_region_id 를 확정한다.
      * 하나의 트랜잭션으로 처리되어, 아래 중 하나라도 실패하면 전체 롤백된다.
-     * 1. 화면 입력값과 생성자(owner), 상태, 초대 코드를 trip 에 INSERT 한다.
-     * 2. 생성자(owner)를 member_rel_trip 에 OWNER 로 등록한다.
+     * 1. 생성자가 그 기간에 이미 참여 중인(취소되지 않은) 다른 여행이 없는지 확인한다. (하루에 여행은 하나만)
+     * 2. 화면 입력값과 생성자(owner), 상태, 초대 코드를 trip 에 INSERT 한다.
+     * 3. 생성자(owner)를 member_rel_trip 에 OWNER 로 등록한다.
      */
     @Transactional
     public TripCreateResponse createTrip(final TripCreateRequest request, final Long userId) {
         // userId 는 컨트롤러에서 @UserId 로 주입된 인증된 사용자 ID 이다. 이 여행의 생성자(owner)가 된다.
+
+        // 0. 그 기간에 이미 참여 중인 다른 여행이 있는지 확인 (하루에 여행은 하나만 가능)
+        if (tripMapper.existsOverlappingTrip(userId, request.getStartDate(), request.getEndDate()) > 0) {
+            throw new CommonException(ErrorCode.TRIP_DATE_OVERLAP);
+        }
 
         // 첫 미션 시각(시·분)을 여행 시작일과 합쳐 저장용 일시로 가공
         final LocalDateTime missionStartAt = LocalDateTime.of(request.getStartDate(), request.getMissionStartTime());
@@ -383,7 +389,8 @@ public class TripService {
      * 3. 참여 가능한 상태(CREATED)인지 확인한다.
      * 4. 이미 참여한 회원인지 확인한다.
      * 5. 정원이 남아 있는지 확인한다.
-     * 6. member_rel_trip 에 MEMBER 로 등록한다.
+     * 6. 참여하려는 회원이 그 기간에 이미 참여 중인(취소되지 않은) 다른 여행이 없는지 확인한다. (하루에 여행은 하나만)
+     * 7. member_rel_trip 에 MEMBER 로 등록한다.
      */
     @Transactional
     public TripJoinResponse joinTrip(final String code, final Long userId) {
@@ -413,7 +420,12 @@ public class TripService {
             throw new CommonException(ErrorCode.TRIP_FULL);
         }
 
-        // 6. 참여자로 등록
+        // 6. 그 기간에 이미 참여 중인 다른 여행이 있는지 확인 (하루에 여행은 하나만 가능)
+        if (tripMapper.existsOverlappingTrip(userId, trip.getStartDate(), trip.getEndDate()) > 0) {
+            throw new CommonException(ErrorCode.TRIP_DATE_OVERLAP);
+        }
+
+        // 7. 참여자로 등록
         tripMapper.insertTripMember(trip.getTripId(), userId, ETripMemberRole.MEMBER.name());
 
         return new TripJoinResponse(trip.getTripId());

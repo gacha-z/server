@@ -11,6 +11,7 @@ import dk.gatchaz.server.trip.dto.TripUpdateParam;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Mapper
@@ -143,6 +144,14 @@ public interface TripMapper {
      * 회원(memberId)이 실제로 존재하는지 확인한다. (존재하면 1 이상)
      */
     int existsMember(@Param("memberId") Long memberId);
+
+    /**
+     * 회원(memberId)이 현재 참여(JOINED) 중인 여행 중, 취소되지 않은 여행의 기간이
+     * [startDate, endDate] 와 하루라도 겹치는 여행이 있는지 확인한다. (하루에 여행은 하나만 가능)
+     */
+    int existsOverlappingTrip(@Param("memberId") Long memberId,
+                              @Param("startDate") LocalDate startDate,
+                              @Param("endDate") LocalDate endDate);
 
     /**
      * 사용 가능한(use_yn = 'Y') 여행 지역 중, 해당 여행(tripId)에서 아직 선택(selected_yn = 'Y')되지 않은
