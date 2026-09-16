@@ -1,6 +1,8 @@
 package dk.gatchaz.server.trip.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import dk.gatchaz.server.common.json.LenientLocalTimeDeserializer;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -46,6 +48,7 @@ public class TripCreateRequest {
     /** 첫 미션 받을 시각 (시·분만, 예: "10:00"). 여행 시작일과 합쳐 mission_start_at 으로 저장된다. */
     @NotNull
     @JsonFormat(pattern = "HH:mm")
+    @JsonDeserialize(using = LenientLocalTimeDeserializer.class)
     private LocalTime missionStartTime;
 
 }

@@ -2,6 +2,7 @@ package dk.gatchaz.server.common.exception;
 
 import dk.gatchaz.server.common.dto.ResponseDto;
 import dk.gatchaz.server.common.security.exception.JwtAuthenticationException;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
@@ -16,6 +17,9 @@ import org.springframework.web.method.annotation.HandlerMethodValidationExceptio
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.util.ContentCachingRequestWrapper;
+
+import java.nio.charset.StandardCharsets;
 
 @Slf4j
 @RestControllerAdvice
@@ -54,9 +58,32 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseDto<?> handleHttpMessageNotReadableException(HttpMessageNotReadableException e) {
-        log.error("Handler in HttpMessageNotReadableException Error Message = " + e.getMessage());
+    public ResponseDto<?> handleHttpMessageNotReadableException(HttpMessageNotReadableException e,
+                                                                  HttpServletRequest request) {
+        log.error("Handler in HttpMessageNotReadableException Error Message = {}, Request Body = {}",
+                e.getMessage(), requestBody(request));
         return ResponseDto.fail(new CommonException(ErrorCode.INVALID_ARGUMENT));
+    }
+
+    /**
+     * ContentCachingRequestFilter 가 캐싱해둔 원본 요청 바디를 꺼낸다. (Jackson 이 이미 소비한
+     * 입력 스트림은 다시 못 읽으므로, 캐싱된 바이트 배열에서만 확인 가능하다) 캐싱 대상이 아니었거나
+     * (multipart 등) 바디가 없으면 그 사실을 그대로 로그에 남긴다.
+     */
+    private static final int REQUEST_BODY_LOG_LIMIT = 2000;
+
+    private String requestBody(final HttpServletRequest request) {
+        if (!(request instanceof ContentCachingRequestWrapper wrapper)) {
+            return "(캐싱되지 않음)";
+        }
+        final byte[] content = wrapper.getContentAsByteArray();
+        if (content.length == 0) {
+            return "(빈 바디)";
+        }
+        final String body = new String(content, StandardCharsets.UTF_8);
+        return body.length() > REQUEST_BODY_LOG_LIMIT
+                ? body.substring(0, REQUEST_BODY_LOG_LIMIT) + "...(생략)"
+                : body;
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
