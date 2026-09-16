@@ -334,7 +334,9 @@ public class MissionService {
      * 3. 그 날짜에 아직 뽑히지도 못한 나머지 라운드는, 목표 라운드 수를 낮추는 대신 "미션 수행 안함"
      *    (NOT_PERFORMED) 기록을 실제로 남긴다. (아직 선택된 적 없는 미션 중 무작위로 배정 - 이 라운드는
      *    진행되지 않았다는 이력만 남기고, resolvedRounds 계산상 "끝난 라운드"로 취급되게 한다)
-     * 4. 이 마감으로 영향을 받은 여행들에 대해, 혹시 이걸로 여행 전체가 끝난 건지 다시 확인해 완료 처리한다.
+     * 4. 미션 후보 조회를 한 번도 호출하지 않아 mission_daily_goal 자체가 없는 여행(위 1~3번 대상에는
+     *    안 잡힘)도 별도로 찾아 마감한다. (closeUntouchedTrip 참고)
+     * 5. 이 마감으로 영향을 받은 여행들에 대해, 혹시 이걸로 여행 전체가 끝난 건지 다시 확인해 완료 처리한다.
      * 여러 여행/날짜를 한 번에 처리하는 배치이므로, 하나가 실패해도 나머지는 계속 진행한다.
      */
     public void closeStaleDailyGoals() {
@@ -351,6 +353,16 @@ public class MissionService {
             }
         }
 
+        final List<Long> untouchedTripIds = missionMapper.selectUntouchedTripIds();
+        for (final Long tripId : untouchedTripIds) {
+            try {
+                closeUntouchedTrip(tripId);
+                affectedTripIds.add(tripId);
+            } catch (final Exception e) {
+                log.error("미방문 여행 마감 실패: tripId={}, message={}", tripId, e.getMessage(), e);
+            }
+        }
+
         for (final Long tripId : affectedTripIds) {
             try {
                 completeTripIfLastMission(tripId);
@@ -359,8 +371,37 @@ public class MissionService {
             }
         }
 
-        log.info("지난 날짜 마감 배치 종료: 대상 날짜={}건, 영향받은 여행={}건",
-                staleDailyGoals.size(), affectedTripIds.size());
+        log.info("지난 날짜 마감 배치 종료: 대상 날짜={}건, 미방문 여행={}건, 영향받은 여행={}건",
+                staleDailyGoals.size(), untouchedTripIds.size(), affectedTripIds.size());
+    }
+
+    /**
+     * 미션 후보 조회를 한 번도 호출하지 않은(mission_daily_goal 자체가 없는) 여행을 마감한다.
+     * 일자/라운드별로 세세히 채우지 않고, 여행의 마지막 날짜(totalDays)에 목표 라운드 1개를 만들고
+     * 실패(FAILED) 1건만 남겨 completeTripIfLastMission 의 완료 판정이 통과되게 한다.
+     * (그 전 날짜들은 애초에 이력이 없다는 뜻 그대로 비워둔다 - countUnresolvedDays 는 존재하는
+     * mission_daily_goal 행만 보므로 "생성된 적 없는 날짜"는 미해결로 잡히지 않는다)
+     */
+    private void closeUntouchedTrip(final Long tripId) {
+        final TripMissionSettingInfo trip = missionMapper.selectTripMissionSettingInfo(tripId);
+        if (trip == null || trip.getTripRegionId() == null
+                || trip.getMissionStartAt() == null || trip.getEndDate() == null) {
+            log.error("미방문 여행 마감 실패 - 여행/지역 정보 없음: tripId={}", tripId);
+            return;
+        }
+
+        final int totalDays = (int) ChronoUnit.DAYS.between(
+                trip.getMissionStartAt().toLocalDate(), trip.getEndDate().toLocalDate()) + 1;
+
+        missionMapper.insertDailyGoal(tripId, totalDays, 1);
+
+        final List<Long> missionIds = missionMapper.selectRandomMissionIds(1, trip.getTripRegionId(), tripId);
+        if (missionIds.isEmpty()) {
+            log.error("미방문 여행 마감 실패 - 배정 가능한 미션 없음: tripId={}", tripId);
+            return;
+        }
+
+        missionMapper.insertFailedTripMission(tripId, totalDays, 1, missionIds.get(0));
     }
 
     /**

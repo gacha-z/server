@@ -338,6 +338,46 @@
           )
     </select>
 
+    <!-- 지역 선택 + 미션 시작 시각은 지났는데(status='CREATED') mission_daily_goal 이 단 하나도 없는
+         여행(=미션 후보 조회를 한 번도 호출한 적 없는 여행). selectStaleDailyGoals 는 mission_daily_goal
+         기준 INNER JOIN이라 이런 여행을 절대 못 잡아서 별도로 찾는다. -->
+    <select id="selectUntouchedTripIds" resultType="java.lang.Long">
+        SELECT
+            t.trip_id
+        FROM trip t
+        WHERE t.status = 'CREATED'
+          AND t.trip_region_id IS NOT NULL
+          AND t.mission_start_at IS NOT NULL
+          AND t.mission_start_at &lt; CURDATE()
+          AND NOT EXISTS (
+              SELECT 1 FROM mission_daily_goal mdg WHERE mdg.trip_id = t.trip_id
+          )
+    </select>
+
+    <!-- 후보 단계조차 가지 못한 라운드를 실패로 남긴다. (완전히 미방문인 여행 마감용) -->
+    <insert id="insertFailedTripMission">
+        INSERT INTO
+            trip_mission(
+                trip_id,
+                mission_id,
+                day_no,
+                assigned_order,
+                status,
+                failed_at,
+                created_at
+            )
+        VALUES
+            (
+                #{tripId},
+                #{missionId},
+                #{dayNo},
+                #{assignedOrder},
+                'FAILED',
+                NOW(),
+                NOW()
+            )
+    </insert>
+
     <!-- 그 날짜에 진행 중이던 미션을 전부 포기(FAILED) 처리한다. (자동 마감 배치용) -->
     <update id="failInProgressTripMissionsForDay">
         UPDATE

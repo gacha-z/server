@@ -183,6 +183,21 @@ public interface MissionMapper {
     List<StaleDailyGoal> selectStaleDailyGoals();
 
     /**
+     * 여행 지역이 선택되고 미션 시작 시각이 지났는데(status='CREATED') mission_daily_goal 이
+     * 단 한 번도 생성된 적 없는(=미션 후보 조회를 한 번도 호출한 적 없는) 여행 ID 목록을 조회한다.
+     * selectStaleDailyGoals 는 mission_daily_goal 기준 INNER JOIN이라 이런 여행은 절대 못 잡으므로
+     * 별도로 찾아 마감한다.
+     */
+    List<Long> selectUntouchedTripIds();
+
+    /**
+     * 후보 단계조차 가지 못한 라운드를 실패(FAILED)로 남긴다. (완전히 미방문인 여행을 마감할 때,
+     * 일자/라운드별로 세세히 채우는 대신 대표로 1건만 남겨 완료 판정을 통과시키는 용도)
+     */
+    int insertFailedTripMission(@Param("tripId") Long tripId, @Param("dayNo") int dayNo,
+                                @Param("assignedOrder") int assignedOrder, @Param("missionId") Long missionId);
+
+    /**
      * 여행(tripId)의 특정 일자(dayNo)에 진행 중(IN_PROGRESS)인 trip_mission 을 전부 포기(FAILED) 처리한다.
      * (그 라운드는 뽑아서 진행하다가 날짜가 넘어가도록 방치된 것이므로 포기로 간주한다)
      */
