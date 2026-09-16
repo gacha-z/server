@@ -2,6 +2,8 @@ package dk.gatchaz.server.setlog.service;
 
 import dk.gatchaz.server.common.exception.CommonException;
 import dk.gatchaz.server.common.exception.ErrorCode;
+import dk.gatchaz.server.notification.dto.LatestDevicePermission;
+import dk.gatchaz.server.notification.mapper.NotificationMapper;
 import dk.gatchaz.server.setlog.dto.SetlogDownloadResponse;
 import dk.gatchaz.server.setlog.dto.SetlogFileInfo;
 import dk.gatchaz.server.setlog.dto.SetlogInsertParam;
@@ -9,6 +11,7 @@ import dk.gatchaz.server.setlog.dto.SetlogResponse;
 import dk.gatchaz.server.setlog.dto.SetlogUploadResponse;
 import dk.gatchaz.server.setlog.mapper.SetlogMapper;
 import dk.gatchaz.server.setlog.support.S3Uploader;
+import dk.gatchaz.server.type.EPermissionStatus;
 import dk.gatchaz.server.type.ESetlogStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,14 +26,16 @@ import java.util.List;
 public class SetlogService {
 
     private final SetlogMapper setlogMapper;
+    private final NotificationMapper notificationMapper;
     private final S3Uploader s3Uploader;
 
     /**
      * 셋로그(영상)를 업로드한다. 하나의 트랜잭션으로 처리된다.
      * 1. 진행 중(IN_PROGRESS)인 미션인지 확인한다.
      * 2. 참여(JOINED) 중인 팀원인지 확인한다.
-     * 3. 이미 이 미션에 셋로그를 등록했으면(재업로드) 실패한다.
-     * 4. S3 에 업로드하고, 렌더링 위치(slot_no)를 서버가 자동 배정해 저장한다.
+     * 3. 요청자의 가장 최근 디바이스에 카메라 권한이 허용(GRANTED)되어 있는지 확인한다.
+     * 4. 이미 이 미션에 셋로그를 등록했으면(재업로드) 실패한다.
+     * 5. S3 에 업로드하고, 렌더링 위치(slot_no)를 서버가 자동 배정해 저장한다.
      */
     @Transactional
     public SetlogUploadResponse uploadSetlog(final Long tripId, final Long tripMissionId, final Long userId,
@@ -45,15 +50,21 @@ public class SetlogService {
             throw new CommonException(ErrorCode.NOT_FOUND_TRIP_MEMBER);
         }
 
-        // 3. 재업로드 방지 (이 미션에 이미 셋로그를 등록했으면 실패)
+        // 3. 카메라 권한이 허용되어 있는지 확인 (디바이스 미등록/권한 미설정도 미허용으로 간주)
+        final LatestDevicePermission permission = notificationMapper.selectLatestDevicePermission(userId);
+        if (permission == null || permission.getCameraStatus() != EPermissionStatus.GRANTED) {
+            throw new CommonException(ErrorCode.CAMERA_PERMISSION_REQUIRED);
+        }
+
+        // 4. 재업로드 방지 (이 미션에 이미 셋로그를 등록했으면 실패)
         if (setlogMapper.existsSetlogByMember(tripMissionId, userId) > 0) {
             throw new CommonException(ErrorCode.ALREADY_EXISTS_SETLOG);
         }
 
-        // 4. S3 업로드 (허용되지 않은 확장자면 S3Uploader 가 예외를 던진다)
+        // 5. S3 업로드 (허용되지 않은 확장자면 S3Uploader 가 예외를 던진다)
         final String fileUrl = s3Uploader.upload(file, tripId, tripMissionId);
 
-        // 5. 렌더링 위치(slot_no) 자동 배정 후 저장
+        // 6. 렌더링 위치(slot_no) 자동 배정 후 저장
         final int slotNo = setlogMapper.countSetlogsForMission(tripMissionId) + 1;
         final SetlogInsertParam param = SetlogInsertParam.builder()
                 .tripId(tripId)

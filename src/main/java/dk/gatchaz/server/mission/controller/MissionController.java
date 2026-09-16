@@ -107,6 +107,8 @@ public class MissionController {
                     ### 실패 응답
                     - 요청자가 그 여행 참여자가 아니면 **404** (NOT_FOUND_TRIP_MEMBER)
                     - 진행 중인 미션이 아니면 **404** (NOT_FOUND_TRIP_MISSION)
+                    - 요청자의 가장 최근 디바이스에 위치 권한이 GRANTED 가 아니면(디바이스 미등록 포함)
+                      **400** (LOCATION_PERMISSION_REQUIRED)
                     - 팀원 전원이 셋로그를 촬영하지 않았으면 **400** (SETLOG_NOT_COMPLETE)
                     - 위치 인증에 실패했으면(허용 거리 초과) **400** (LOCATION_VERIFICATION_FAILED)
                     """)

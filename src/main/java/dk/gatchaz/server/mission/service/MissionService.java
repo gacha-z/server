@@ -18,9 +18,12 @@ import dk.gatchaz.server.mission.dto.TripMissionSettingInfo;
 import dk.gatchaz.server.mission.dto.TripRegionCoordinate;
 import dk.gatchaz.server.mission.mapper.MissionMapper;
 import dk.gatchaz.server.mission.support.DistanceCalculator;
+import dk.gatchaz.server.notification.dto.LatestDevicePermission;
 import dk.gatchaz.server.notification.event.MissionCompletedEvent;
 import dk.gatchaz.server.notification.event.TripCompletedEvent;
+import dk.gatchaz.server.notification.mapper.NotificationMapper;
 import dk.gatchaz.server.type.EMissionStatus;
+import dk.gatchaz.server.type.EPermissionStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -51,6 +54,7 @@ public class MissionService {
     private static final double LOCATION_VERIFICATION_RADIUS_METER = 10_000.0;
 
     private final MissionMapper missionMapper;
+    private final NotificationMapper notificationMapper;
     private final LocationVerificationRecorder locationVerificationRecorder;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -171,8 +175,9 @@ public class MissionService {
     /**
      * 진행 중인 미션(tripMissionId)을 완료 처리한다. 하나의 트랜잭션으로 처리된다.
      * 1. 진행 중(IN_PROGRESS) 상태인지 확인한다.
-     * 2. 현재 참여 중인 모든 팀원이 각자 셋로그를 촬영했는지 확인한다. (전원 촬영 필수)
-     * 3. 완료 시점 좌표와 여행 지역 중심 좌표 사이 거리를 계산해 위치 인증한다. (허용 거리 10km)
+     * 2. 요청자의 가장 최근 디바이스에 위치 권한이 허용(GRANTED)되어 있는지 확인한다.
+     * 3. 현재 참여 중인 모든 팀원이 각자 셋로그를 촬영했는지 확인한다. (전원 촬영 필수)
+     * 4. 완료 시점 좌표와 여행 지역 중심 좌표 사이 거리를 계산해 위치 인증한다. (허용 거리 10km)
      *    인증에 성공하면 이력을 기록하고 완료 처리한다. 실패하면 예외를 던지고 진행 중 상태를 유지한다(재시도 가능).
      */
     @Transactional
@@ -185,14 +190,20 @@ public class MissionService {
             throw new CommonException(ErrorCode.NOT_FOUND_TRIP_MISSION);
         }
 
-        // 2. 셋로그 완료 확인 (참여 중인 모든 팀원이 각자 최소 1개씩 촬영해야 함)
+        // 2. 위치 권한이 허용되어 있는지 확인 (디바이스 미등록/권한 미설정도 미허용으로 간주)
+        final LatestDevicePermission permission = notificationMapper.selectLatestDevicePermission(userId);
+        if (permission == null || permission.getLocationStatus() != EPermissionStatus.GRANTED) {
+            throw new CommonException(ErrorCode.LOCATION_PERMISSION_REQUIRED);
+        }
+
+        // 3. 셋로그 완료 확인 (참여 중인 모든 팀원이 각자 최소 1개씩 촬영해야 함)
         final int joinedMemberCount = missionMapper.countJoinedMembers(tripId);
         final int setlogMemberCount = missionMapper.countSetlogMembers(tripMissionId);
         if (setlogMemberCount < joinedMemberCount) {
             throw new CommonException(ErrorCode.SETLOG_NOT_COMPLETE);
         }
 
-        // 3. 위치 인증 (여행 지역 중심 좌표와의 거리, 허용 거리 이내인지)
+        // 4. 위치 인증 (여행 지역 중심 좌표와의 거리, 허용 거리 이내인지)
         // 인증 이력은 완료 처리 트랜잭션과 별개로(REQUIRES_NEW) 즉시 커밋하여, 이후 실패로 예외가 던져져도 남는다.
         final TripRegionCoordinate region = missionMapper.selectTripRegionCoordinate(tripId);
         if (region == null || region.getLatitude() == null || region.getLongitude() == null) {
@@ -212,7 +223,7 @@ public class MissionService {
             throw new CommonException(ErrorCode.LOCATION_VERIFICATION_FAILED);
         }
 
-        // 4. 완료 처리
+        // 5. 완료 처리
         missionMapper.completeTripMission(tripId, tripMissionId);
 
         // 도감(미션 성공/FOOD/CAFE) 배지 지급을 위한 이벤트. 이 트랜잭션이 커밋된 뒤 별도 스레드에서 처리된다.

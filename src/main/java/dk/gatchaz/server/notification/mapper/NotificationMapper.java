@@ -4,6 +4,7 @@ import dk.gatchaz.server.notification.dto.DevicePermissionResponse;
 import dk.gatchaz.server.notification.dto.DevicePermissionSaveParam;
 import dk.gatchaz.server.notification.dto.DeviceSaveParam;
 import dk.gatchaz.server.notification.dto.DeviceTokenDto;
+import dk.gatchaz.server.notification.dto.LatestDevicePermission;
 import dk.gatchaz.server.notification.dto.DiaryNotificationContext;
 import dk.gatchaz.server.notification.dto.DiaryReminderTarget;
 import dk.gatchaz.server.notification.dto.NotificationCreateParam;
@@ -65,6 +66,13 @@ public interface NotificationMapper {
      * 등록된 디바이스가 없거나 권한 상태가 아직 없으면 null 을 반환한다(허용되지 않은 것으로 간주).
      */
     Boolean selectLatestDeviceAllPermissionsGranted(@Param("memberId") Long memberId);
+
+    /**
+     * 회원(memberId)이 가장 최근에 활동한 디바이스(last_active_at 기준)의 위치/카메라/알림 권한 상태를
+     * 조회한다. (특정 권한 하나만 검증해야 하는 경우용 - 셋로그 업로드의 카메라 권한, 미션 완료의 위치
+     * 권한 등) 등록된 디바이스가 없거나 권한 상태가 아직 없으면 null.
+     */
+    LatestDevicePermission selectLatestDevicePermission(@Param("memberId") Long memberId);
 
     /**
      * 알림함 목록을 최신순(notification_id 내림차순)으로 조회한다.

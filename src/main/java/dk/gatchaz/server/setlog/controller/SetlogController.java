@@ -44,6 +44,8 @@ public class SetlogController {
                     ### 실패 응답
                     - 진행 중인 미션이 아니면 **404** (NOT_FOUND_TRIP_MISSION)
                     - 참여 중인 팀원이 아니면 **404** (NOT_FOUND_TRIP_MEMBER)
+                    - 요청자의 가장 최근 디바이스에 카메라 권한이 GRANTED 가 아니면(디바이스 미등록 포함)
+                      **400** (CAMERA_PERMISSION_REQUIRED)
                     - 이미 이 미션에 셋로그를 등록했으면 **409** (ALREADY_EXISTS_SETLOG)
                     - 허용되지 않은 확장자면 **400** (UNSUPPORTED_MEDIA_TYPE)
                     """)

@@ -113,6 +113,21 @@
         LIMIT 1
     </select>
 
+    <!-- 회원의 가장 최근 활동 디바이스(last_active_at DESC) 1건의 권한 상태 3개를 그대로 조회한다.
+         (개별 권한 하나만 검증해야 하는 경우용) -->
+    <select id="selectLatestDevicePermission" resultType="dk.gatchaz.server.notification.dto.LatestDevicePermission">
+        SELECT
+            dp.location_status,
+            dp.camera_status,
+            dp.notification_status
+        FROM device d
+        INNER JOIN device_permission dp
+            ON dp.device_id = d.device_id
+        WHERE d.member_id = #{memberId}
+        ORDER BY d.last_active_at DESC, d.updated_at DESC
+        LIMIT 1
+    </select>
+
     <update id="updateDevicePermission">
         UPDATE
             device_permission
